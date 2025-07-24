@@ -6,6 +6,7 @@ import {
   useDraggable,
 } from "@dnd-kit/core";
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 
 // Tareas iniciales simuladas
 const tareasIniciales = {
@@ -32,7 +33,6 @@ export default function Project() {
   const { id } = useParams();
   const [tareas, setTareas] = useState(tareasIniciales);
 
-  // Mover tarea cuando se suelta
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over) return;
@@ -40,9 +40,8 @@ export default function Project() {
     const tareaId = active.id;
     const destino = over.id;
 
-    if (destino === active.data.current?.parent) return; // misma columna
+    if (destino === active.data.current?.parent) return;
 
-    // Remover de la columna original
     const nuevaTareas = { ...tareas };
     let tareaMovida;
 
@@ -56,20 +55,26 @@ export default function Project() {
       });
     }
 
-    // Agregar a la nueva columna
     nuevaTareas[destino].push(tareaMovida);
     setTareas(nuevaTareas);
   };
-  
+
   const handleAgregarTarea = (estadoId, titulo) => {
     const nuevaTarea = {
-      id: `t${Date.now()}`, // id único temporal
+      id: `t${Date.now()}`,
       titulo,
     };
-  
+
     setTareas((prev) => ({
       ...prev,
       [estadoId]: [...prev[estadoId], nuevaTarea],
+    }));
+  };
+
+  const handleEliminarTarea = (estadoId, tareaId) => {
+    setTareas((prev) => ({
+      ...prev,
+      [estadoId]: prev[estadoId].filter((t) => t.id !== tareaId),
     }));
   };
 
@@ -86,6 +91,7 @@ export default function Project() {
               titulo={estado.titulo}
               tareas={tareas[estado.id]}
               onAgregar={handleAgregarTarea}
+              onEliminar={handleEliminarTarea}
             />
           ))}
         </div>
@@ -94,58 +100,54 @@ export default function Project() {
   );
 }
 
-// 🧱 Componente de columna
-function Columna({ id, titulo, tareas, onAgregar }) {
-    const { setNodeRef, isOver } = useDroppable({ id });
-    const [nuevaTarea, setNuevaTarea] = useState("");
-  
-    const handleAgregar = () => {
-      const tituloLimpiado = nuevaTarea.trim();
-      if (!tituloLimpiado) return;
-  
-      onAgregar(id, tituloLimpiado);
-      setNuevaTarea("");
-    };
-  
-    return (
-      <div
-        ref={setNodeRef}
-        className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all
-          ${isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"}
-        `}
-      >
-        <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
-  
-        <div className="space-y-2 mb-4">
+function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  const [nuevaTarea, setNuevaTarea] = useState("");
+
+  const handleAgregar = () => {
+    const tituloLimpiado = nuevaTarea.trim();
+    if (!tituloLimpiado) return;
+
+    onAgregar(id, tituloLimpiado);
+    setNuevaTarea("");
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all
+        ${isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"}`}
+    >
+      <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
+
+      <div className="space-y-2 mb-4">
+        <AnimatePresence>
           {tareas.map((tarea) => (
-            <Tarea key={tarea.id} tarea={tarea} parent={id} />
+            <Tarea key={tarea.id} tarea={tarea} parent={id} onEliminar={onEliminar} />
           ))}
-        </div>
-  
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={nuevaTarea}
-            onChange={(e) => setNuevaTarea(e.target.value)}
-            className="w-full px-2 py-1 rounded border border-gray-300 text-sm"
-            placeholder="Nueva tarea..."
-          />
-          <button
-            onClick={handleAgregar}
-            className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"
-          >
-            Agregar
-          </button>
-        </div>
+        </AnimatePresence>
       </div>
-    );
-  }
-  
 
-  
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={nuevaTarea}
+          onChange={(e) => setNuevaTarea(e.target.value)}
+          className="w-full px-2 py-1 rounded border border-gray-300 text-sm"
+          placeholder="Nueva tarea..."
+        />
+        <button
+          onClick={handleAgregar}
+          className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"
+        >
+          Agregar
+        </button>
+      </div>
+    </div>
+  );
+}
 
-// 🗂️ Componente de tarea
-function Tarea({ tarea, parent }) {
+function Tarea({ tarea, parent, onEliminar }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: tarea.id,
     data: { parent },
@@ -157,19 +159,39 @@ function Tarea({ tarea, parent }) {
         zIndex: 10,
         position: "relative",
       }
-    : undefined;
+    : {};
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      style={style}
-      className={`bg-white p-3 rounded-lg shadow transition ${
+      {...attributes} // solo atributos de accesibilidad
+      style={{
+        ...style,
+        opacity: 0,
+        scale: 0.95,
+      }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.2 }}
+      className={`bg-white p-3 rounded-lg shadow transition flex justify-between items-center ${
         isDragging ? "opacity-50" : "hover:bg-gray-50"
       }`}
     >
-      {tarea.titulo}
-    </div>
+      {/* Título de la tarea - se arrastra */}
+      <div {...listeners} className="flex-1 cursor-move">
+        {tarea.titulo}
+      </div>
+
+      {/* Botón eliminar - NO se arrastra */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onEliminar(parent, tarea.id);
+        }}
+        className="ml-2 text-sm text-red-500 hover:text-red-700"
+      >
+        ✕
+      </button>
+    </motion.div>
   );
 }
