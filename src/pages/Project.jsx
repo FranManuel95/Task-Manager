@@ -83,22 +83,25 @@ export default function Project() {
 
 // 🧱 Componente de columna
 function Columna({ id, titulo, tareas }) {
-  const { setNodeRef } = useDroppable({ id });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="bg-gray-100 p-4 rounded-xl min-h-[200px] shadow-inner"
-    >
-      <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
-      <div className="space-y-2">
-        {tareas.map((tarea) => (
-          <Tarea key={tarea.id} tarea={tarea} parent={id} />
-        ))}
+    const { setNodeRef, isOver } = useDroppable({ id });
+  
+    return (
+      <div
+        ref={setNodeRef}
+        className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all
+          ${isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"}
+        `}
+      >
+        <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
+        <div className="space-y-2">
+          {tareas.map((tarea) => (
+            <Tarea key={tarea.id} tarea={tarea} parent={id} />
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+  
 
 // 🗂️ Componente de tarea
 function Tarea({ tarea, parent }) {
