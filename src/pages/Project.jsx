@@ -60,6 +60,18 @@ export default function Project() {
     nuevaTareas[destino].push(tareaMovida);
     setTareas(nuevaTareas);
   };
+  
+  const handleAgregarTarea = (estadoId, titulo) => {
+    const nuevaTarea = {
+      id: `t${Date.now()}`, // id único temporal
+      titulo,
+    };
+  
+    setTareas((prev) => ({
+      ...prev,
+      [estadoId]: [...prev[estadoId], nuevaTarea],
+    }));
+  };
 
   return (
     <div className="p-6">
@@ -73,6 +85,7 @@ export default function Project() {
               id={estado.id}
               titulo={estado.titulo}
               tareas={tareas[estado.id]}
+              onAgregar={handleAgregarTarea}
             />
           ))}
         </div>
@@ -82,8 +95,17 @@ export default function Project() {
 }
 
 // 🧱 Componente de columna
-function Columna({ id, titulo, tareas }) {
+function Columna({ id, titulo, tareas, onAgregar }) {
     const { setNodeRef, isOver } = useDroppable({ id });
+    const [nuevaTarea, setNuevaTarea] = useState("");
+  
+    const handleAgregar = () => {
+      const tituloLimpiado = nuevaTarea.trim();
+      if (!tituloLimpiado) return;
+  
+      onAgregar(id, tituloLimpiado);
+      setNuevaTarea("");
+    };
   
     return (
       <div
@@ -93,14 +115,33 @@ function Columna({ id, titulo, tareas }) {
         `}
       >
         <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
-        <div className="space-y-2">
+  
+        <div className="space-y-2 mb-4">
           {tareas.map((tarea) => (
             <Tarea key={tarea.id} tarea={tarea} parent={id} />
           ))}
         </div>
+  
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={nuevaTarea}
+            onChange={(e) => setNuevaTarea(e.target.value)}
+            className="w-full px-2 py-1 rounded border border-gray-300 text-sm"
+            placeholder="Nueva tarea..."
+          />
+          <button
+            onClick={handleAgregar}
+            className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"
+          >
+            Agregar
+          </button>
+        </div>
       </div>
     );
   }
+  
+
   
 
 // 🗂️ Componente de tarea
