@@ -23,8 +23,10 @@ export const useTareasStore = create(
           const nuevaTarea = {
             id: `t${Date.now()}`,
             titulo,
+            descripcion: "",
+            prioridad: "media", // nueva propiedad
           };
-
+      
           return {
             tareas: {
               ...state.tareas,
@@ -32,6 +34,7 @@ export const useTareasStore = create(
             },
           };
         }),
+      
 
       eliminarTarea: (estadoId, tareaId) =>
         set((state) => ({
@@ -61,21 +64,23 @@ export const useTareasStore = create(
           return { tareas: nuevaTareas };
         }),
 
-        editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion) =>
-            set((state) => ({
-              tareas: {
-                ...state.tareas,
-                [estadoId]: state.tareas[estadoId].map((t) =>
-                  t.id === tareaId
-                    ? {
-                        ...t,
-                        titulo: nuevoTitulo,
-                        descripcion: nuevaDescripcion,
-                      }
-                    : t
-                ),
-              },
-            })),
+        editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion, nuevaPrioridad) =>
+  set((state) => ({
+    tareas: {
+      ...state.tareas,
+      [estadoId]: state.tareas[estadoId].map((t) =>
+        t.id === tareaId
+          ? {
+              ...t,
+              titulo: nuevoTitulo ?? t.titulo,
+              descripcion: nuevaDescripcion ?? t.descripcion,
+              prioridad: nuevaPrioridad ?? t.prioridad,
+            }
+          : t
+      ),
+    },
+  })),
+
     }),
     
     {

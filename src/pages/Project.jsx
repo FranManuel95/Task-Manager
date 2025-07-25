@@ -5,7 +5,7 @@ import {
   useDroppable,
   useDraggable,
 } from "@dnd-kit/core";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
 
@@ -128,47 +128,28 @@ function Tarea({ tarea, parent, onEliminar }) {
 
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
-  const [nuevaDescripcion, setNuevaDescripcion] = useState(
-    tarea.descripcion || ""
-  );
+  const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
+  const [prioridad, setPrioridad] = useState(tarea.prioridad || "media");
 
   const formRef = useRef(null);
 
-  // Guardar cambios con useCallback (para que el efecto lo detecte)
+  // Solo guardar al pulsar Enter, no en blur ni clic fuera
   const guardarCambios = useCallback(() => {
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
-
     if (tituloLimpio) {
-      editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia);
+      editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia, prioridad);
     }
     setModoEdicion(false);
-  }, [
-    nuevoTitulo,
-    nuevaDescripcion,
-    editarTarea,
-    parent,
-    tarea.id,
-    setModoEdicion,
-  ]);
+  }, [nuevoTitulo, nuevaDescripcion, prioridad, editarTarea, parent, tarea.id]);
 
-  // Guardar al hacer clic fuera del contenedor de edición
-  useEffect(() => {
-    if (!modoEdicion) return;
+  const manejarKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      guardarCambios();
+    }
+  };
 
-    const handleClickOutside = (e) => {
-      if (formRef.current && !formRef.current.contains(e.target)) {
-        guardarCambios();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [modoEdicion, guardarCambios]);
-
-  // Estilo de movimiento al arrastrar
   const style = transform
     ? {
         transform: `translate(${transform.x}px, ${transform.y}px)`,
@@ -194,23 +175,27 @@ function Tarea({ tarea, parent, onEliminar }) {
           <input
             value={nuevoTitulo}
             onChange={(e) => setNuevoTitulo(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && guardarCambios()}
+            onKeyDown={manejarKeyDown}
             className="text-sm border border-gray-300 rounded px-2 py-1"
             autoFocus
           />
           <textarea
             value={nuevaDescripcion}
             onChange={(e) => setNuevaDescripcion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                guardarCambios();
-              }
-            }}
-            onBlur={guardarCambios}
+            onKeyDown={manejarKeyDown}
             className="text-sm border border-gray-300 rounded px-2 py-1"
             placeholder="Añade una descripción..."
           />
+          <select
+            value={prioridad}
+            onChange={(e) => setPrioridad(e.target.value)}
+            onKeyDown={manejarKeyDown}
+            className="text-sm border border-gray-300 rounded px-2 py-1"
+          >
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
         </div>
       ) : (
         <div className="flex justify-between items-start group">
@@ -229,9 +214,21 @@ function Tarea({ tarea, parent, onEliminar }) {
               </button>
             </p>
             {tarea.descripcion && (
-              <p className="text-sm text-gray-600 mt-1">
-                {tarea.descripcion}
-              </p>
+              <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
+            )}
+            {tarea.prioridad && (
+              <span
+                className={`inline-block mt-1 text-xs px-2 py-1 rounded font-medium
+                  ${
+                    tarea.prioridad === "alta"
+                      ? "bg-red-100 text-red-700"
+                      : tarea.prioridad === "media"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+              >
+                {tarea.prioridad}
+              </span>
             )}
           </div>
 
