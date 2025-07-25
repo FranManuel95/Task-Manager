@@ -7,22 +7,8 @@ import {
 } from "@dnd-kit/core";
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTareasStore } from "../store/tareasStore";
 
-// Tareas iniciales simuladas
-const tareasIniciales = {
-  "por-hacer": [
-    { id: "t1", titulo: "Diseñar el logo" },
-    { id: "t2", titulo: "Crear wireframes" },
-  ],
-  "en-progreso": [
-    { id: "t3", titulo: "Implementar login" },
-  ],
-  "completado": [
-    { id: "t4", titulo: "Configurar Tailwind" },
-  ],
-};
-
-// Columnas
 const estados = [
   { id: "por-hacer", titulo: "Por hacer" },
   { id: "en-progreso", titulo: "En progreso" },
@@ -31,7 +17,11 @@ const estados = [
 
 export default function Project() {
   const { id } = useParams();
-  const [tareas, setTareas] = useState(tareasIniciales);
+
+  const tareas = useTareasStore((state) => state.tareas);
+  const agregarTarea = useTareasStore((state) => state.agregarTarea);
+  const eliminarTarea = useTareasStore((state) => state.eliminarTarea);
+  const moverTarea = useTareasStore((state) => state.moverTarea);
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -42,40 +32,7 @@ export default function Project() {
 
     if (destino === active.data.current?.parent) return;
 
-    const nuevaTareas = { ...tareas };
-    let tareaMovida;
-
-    for (const estado in nuevaTareas) {
-      nuevaTareas[estado] = nuevaTareas[estado].filter((t) => {
-        if (t.id === tareaId) {
-          tareaMovida = t;
-          return false;
-        }
-        return true;
-      });
-    }
-
-    nuevaTareas[destino].push(tareaMovida);
-    setTareas(nuevaTareas);
-  };
-
-  const handleAgregarTarea = (estadoId, titulo) => {
-    const nuevaTarea = {
-      id: `t${Date.now()}`,
-      titulo,
-    };
-
-    setTareas((prev) => ({
-      ...prev,
-      [estadoId]: [...prev[estadoId], nuevaTarea],
-    }));
-  };
-
-  const handleEliminarTarea = (estadoId, tareaId) => {
-    setTareas((prev) => ({
-      ...prev,
-      [estadoId]: prev[estadoId].filter((t) => t.id !== tareaId),
-    }));
+    moverTarea(tareaId, destino);
   };
 
   return (
@@ -90,8 +47,8 @@ export default function Project() {
               id={estado.id}
               titulo={estado.titulo}
               tareas={tareas[estado.id]}
-              onAgregar={handleAgregarTarea}
-              onEliminar={handleEliminarTarea}
+              onAgregar={agregarTarea}
+              onEliminar={eliminarTarea}
             />
           ))}
         </div>
@@ -115,8 +72,9 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
   return (
     <div
       ref={setNodeRef}
-      className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all
-        ${isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"}`}
+      className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all ${
+        isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"
+      }`}
     >
       <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
 
@@ -164,25 +122,22 @@ function Tarea({ tarea, parent, onEliminar }) {
   return (
     <motion.div
       ref={setNodeRef}
-      {...attributes} // solo atributos de accesibilidad
+      {...attributes}
       style={{
         ...style,
         opacity: 0,
         scale: 0.95,
       }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.2 }}
       className={`bg-white p-3 rounded-lg shadow transition flex justify-between items-center ${
         isDragging ? "opacity-50" : "hover:bg-gray-50"
       }`}
     >
-      {/* Título de la tarea - se arrastra */}
       <div {...listeners} className="flex-1 cursor-move">
         {tarea.titulo}
       </div>
-
-      {/* Botón eliminar - NO se arrastra */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -195,3 +150,4 @@ function Tarea({ tarea, parent, onEliminar }) {
     </motion.div>
   );
 }
+

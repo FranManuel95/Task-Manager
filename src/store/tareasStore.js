@@ -1,0 +1,59 @@
+import { create } from "zustand";
+
+export const useTareasStore = create((set) => ({
+  tareas: {
+    "por-hacer": [
+      { id: "t1", titulo: "Diseñar el logo" },
+      { id: "t2", titulo: "Crear wireframes" },
+    ],
+    "en-progreso": [
+      { id: "t3", titulo: "Implementar login" },
+    ],
+    "completado": [
+      { id: "t4", titulo: "Configurar Tailwind" },
+    ],
+  },
+
+  agregarTarea: (estadoId, titulo) =>
+    set((state) => {
+      const nuevaTarea = {
+        id: `t${Date.now()}`,
+        titulo,
+      };
+
+      return {
+        tareas: {
+          ...state.tareas,
+          [estadoId]: [...state.tareas[estadoId], nuevaTarea],
+        },
+      };
+    }),
+
+  eliminarTarea: (estadoId, tareaId) =>
+    set((state) => ({
+      tareas: {
+        ...state.tareas,
+        [estadoId]: state.tareas[estadoId].filter((t) => t.id !== tareaId),
+      },
+    })),
+
+  moverTarea: (tareaId, destinoId) =>
+    set((state) => {
+      const nuevaTareas = { ...state.tareas };
+      let tareaMovida;
+
+      for (const estado in nuevaTareas) {
+        nuevaTareas[estado] = nuevaTareas[estado].filter((t) => {
+          if (t.id === tareaId) {
+            tareaMovida = t;
+            return false;
+          }
+          return true;
+        });
+      }
+
+      nuevaTareas[destinoId].push(tareaMovida);
+
+      return { tareas: nuevaTareas };
+    }),
+}));
