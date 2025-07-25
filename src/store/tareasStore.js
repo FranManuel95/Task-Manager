@@ -6,14 +6,15 @@ export const useTareasStore = create(
     (set) => ({
       tareas: {
         "por-hacer": [
-          { id: "t1", titulo: "Diseñar el logo" },
-          { id: "t2", titulo: "Crear wireframes" },
-        ],
+          { id: "t1", titulo: "Diseñar el logo", descripcion: "Debe representar el branding" },
+          { id: "t2", titulo: "Crear wireframes", descripcion: "" },
+],
         "en-progreso": [
-          { id: "t3", titulo: "Implementar login" },
+          { id: "t3", titulo: "Implementar login", descripcion: "Usar autenticación JWT" },
         ],
         "completado": [
-          { id: "t4", titulo: "Configurar Tailwind" },
+          { id: "t4", titulo: "Configurar Tailwind", descripcion: "Estilos base para el proyecto" },
+          { id: "t5", titulo: "Instalar dependencias", descripcion: "Instalar React y React Router" },
         ],
       },
 
@@ -60,12 +61,18 @@ export const useTareasStore = create(
           return { tareas: nuevaTareas };
         }),
 
-      editarTarea: (estadoId, tareaId, nuevoTitulo) =>
+        editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion) =>
             set((state) => ({
               tareas: {
                 ...state.tareas,
                 [estadoId]: state.tareas[estadoId].map((t) =>
-                  t.id === tareaId ? { ...t, titulo: nuevoTitulo } : t
+                  t.id === tareaId
+                    ? {
+                        ...t,
+                        titulo: nuevoTitulo,
+                        descripcion: nuevaDescripcion,
+                      }
+                    : t
                 ),
               },
             })),

@@ -5,7 +5,7 @@ import {
   useDroppable,
   useDraggable,
 } from "@dnd-kit/core";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
 
@@ -114,6 +114,45 @@ function Tarea({ tarea, parent, onEliminar }) {
   const editarTarea = useTareasStore((state) => state.editarTarea);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
+  const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
+
+  const formRef = useRef(null);
+
+  // ✅ Actualiza los campos si entra en modo edición
+  useEffect(() => {
+    if (modoEdicion) {
+      setNuevoTitulo(tarea.titulo);
+      setNuevaDescripcion(tarea.descripcion || "");
+    }
+  }, [modoEdicion, tarea.titulo, tarea.descripcion]);
+
+  // ✅ Memoizar para evitar warning de ESLint
+  const guardarCambios = useCallback(() => {
+    const tituloLimpio = nuevoTitulo.trim();
+    const descripcionLimpia = nuevaDescripcion.trim();
+
+    if (tituloLimpio) {
+      editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia);
+    }
+
+    setModoEdicion(false);
+  }, [nuevoTitulo, nuevaDescripcion, editarTarea, parent, tarea.id]);
+
+  // ✅ Detectar clic fuera del área de edición
+  useEffect(() => {
+    if (!modoEdicion) return;
+
+    const handleClickOutside = (e) => {
+      if (formRef.current && !formRef.current.contains(e.target)) {
+        guardarCambios();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [modoEdicion, guardarCambios]);
 
   const style = transform
     ? {
@@ -123,65 +162,72 @@ function Tarea({ tarea, parent, onEliminar }) {
       }
     : {};
 
-  const guardarCambios = () => {
-    if (nuevoTitulo.trim() && nuevoTitulo !== tarea.titulo) {
-      editarTarea(parent, tarea.id, nuevoTitulo.trim());
-    }
-    setModoEdicion(false);
-  };
 
   return (
     <motion.div
       ref={setNodeRef}
-      style={{
-        ...style,
-        opacity: 0,
-        scale: 0.95,
-      }}
+      style={style}
       animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.2 }}
-      className={`bg-white p-3 rounded-lg shadow transition flex justify-between items-center ${
+      className={`bg-white p-3 rounded-lg shadow flex flex-col gap-2 transition ${
         isDragging ? "opacity-50" : "hover:bg-gray-50"
       }`}
     >
-      {/* 🎯 Área editable */}
-      <div className="flex-1" onDoubleClick={() => setModoEdicion(true)}>
-        {modoEdicion ? (
+      {modoEdicion ? (
+        <div ref={formRef} className="flex flex-col gap-2">
           <input
             value={nuevoTitulo}
             onChange={(e) => setNuevoTitulo(e.target.value)}
-            onBlur={guardarCambios}
             onKeyDown={(e) => e.key === "Enter" && guardarCambios()}
+            className="text-sm border border-gray-300 rounded px-2 py-1"
             autoFocus
-            className="w-full text-sm border border-gray-300 rounded px-2 py-1"
           />
-        ) : (
-          <span>{tarea.titulo}</span>
-        )}
-      </div>
-
-      {/* 🟦 Handler de drag */}
-      <div
-        {...listeners}
-        {...attributes}
-        className="ml-2 cursor-grab text-gray-400 hover:text-gray-600"
-        title="Arrastrar tarea"
-        onClick={(e) => e.stopPropagation()}
-      >
-        ⠿
-      </div>
-
-      {/* ❌ Botón de eliminar */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onEliminar(parent, tarea.id);
-        }}
-        className="ml-2 text-sm text-red-500 hover:text-red-700"
-      >
-        ✕
-      </button>
+          <textarea
+            value={nuevaDescripcion}
+            onChange={(e) => setNuevaDescripcion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault(); // Evita salto de línea
+                guardarCambios();
+              }
+  }}
+  onBlur={guardarCambios}
+  className="text-sm border border-gray-300 rounded px-2 py-1"
+  placeholder="Añade una descripción..."
+          />
+        </div>
+      ) : (
+        <div className="flex justify-between items-start" onDoubleClick={() => setModoEdicion(true)}>
+          <div className="flex-1">
+            <p className="font-medium">{tarea.titulo}</p>
+            {tarea.descripcion && (
+              <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
+            )}
+          </div>
+          <div className="flex gap-2 items-start">
+            <div
+              {...listeners}
+              {...attributes}
+              onClick={(e) => e.stopPropagation()}
+              className="cursor-grab text-gray-400 hover:text-gray-600"
+              title="Arrastrar"
+            >
+              ⠿
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar(parent, tarea.id);
+              }}
+              className="text-red-500 hover:text-red-700 text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
