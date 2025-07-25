@@ -111,6 +111,10 @@ function Tarea({ tarea, parent, onEliminar }) {
     data: { parent },
   });
 
+  const editarTarea = useTareasStore((state) => state.editarTarea);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
+
   const style = transform
     ? {
         transform: `translate(${transform.x}px, ${transform.y}px)`,
@@ -119,10 +123,16 @@ function Tarea({ tarea, parent, onEliminar }) {
       }
     : {};
 
+  const guardarCambios = () => {
+    if (nuevoTitulo.trim() && nuevoTitulo !== tarea.titulo) {
+      editarTarea(parent, tarea.id, nuevoTitulo.trim());
+    }
+    setModoEdicion(false);
+  };
+
   return (
     <motion.div
       ref={setNodeRef}
-      {...attributes}
       style={{
         ...style,
         opacity: 0,
@@ -135,9 +145,34 @@ function Tarea({ tarea, parent, onEliminar }) {
         isDragging ? "opacity-50" : "hover:bg-gray-50"
       }`}
     >
-      <div {...listeners} className="flex-1 cursor-move">
-        {tarea.titulo}
+      {/* 🎯 Área editable */}
+      <div className="flex-1" onDoubleClick={() => setModoEdicion(true)}>
+        {modoEdicion ? (
+          <input
+            value={nuevoTitulo}
+            onChange={(e) => setNuevoTitulo(e.target.value)}
+            onBlur={guardarCambios}
+            onKeyDown={(e) => e.key === "Enter" && guardarCambios()}
+            autoFocus
+            className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+          />
+        ) : (
+          <span>{tarea.titulo}</span>
+        )}
       </div>
+
+      {/* 🟦 Handler de drag */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="ml-2 cursor-grab text-gray-400 hover:text-gray-600"
+        title="Arrastrar tarea"
+        onClick={(e) => e.stopPropagation()}
+      >
+        ⠿
+      </div>
+
+      {/* ❌ Botón de eliminar */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -150,4 +185,3 @@ function Tarea({ tarea, parent, onEliminar }) {
     </motion.div>
   );
 }
-

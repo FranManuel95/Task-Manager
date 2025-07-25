@@ -52,14 +52,25 @@ export const useTareasStore = create(
                 return false;
               }
               return true;
-            });
+            })
           }
 
           nuevaTareas[destinoId].push(tareaMovida);
 
           return { tareas: nuevaTareas };
         }),
+
+      editarTarea: (estadoId, tareaId, nuevoTitulo) =>
+            set((state) => ({
+              tareas: {
+                ...state.tareas,
+                [estadoId]: state.tareas[estadoId].map((t) =>
+                  t.id === tareaId ? { ...t, titulo: nuevoTitulo } : t
+                ),
+              },
+            })),
     }),
+    
     {
       name: "task-manager-storage", // nombre de la clave en localStorage
     }
