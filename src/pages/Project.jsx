@@ -15,6 +15,12 @@ const estados = [
   { id: "completado", titulo: "Completado" },
 ];
 
+const columnaColors = {
+  "por-hacer": "bg-yellow-100",
+  "en-progreso": "bg-blue-100",
+  "completado": "bg-green-100",
+};
+
 export default function Project() {
   const { id } = useParams();
 
@@ -62,26 +68,32 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
   const [nuevaTarea, setNuevaTarea] = useState("");
 
   const handleAgregar = () => {
-    const tituloLimpiado = nuevaTarea.trim();
-    if (!tituloLimpiado) return;
+    const tituloLimpio = nuevaTarea.trim();
+    if (!tituloLimpio) return;
 
-    onAgregar(id, tituloLimpiado);
+    onAgregar(id, tituloLimpio);
     setNuevaTarea("");
   };
 
   return (
     <div
       ref={setNodeRef}
-      className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all ${
-        isOver ? "bg-blue-100 border-2 border-blue-400" : "bg-gray-100"
-      }`}
+      className={`p-4 rounded-xl min-h-[200px] shadow-inner transition-all border
+        ${columnaColors[id] || "bg-gray-100"}
+        ${isOver ? "border-2 border-blue-400" : "border-transparent"}
+      `}
     >
       <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
 
       <div className="space-y-2 mb-4">
         <AnimatePresence>
           {tareas.map((tarea) => (
-            <Tarea key={tarea.id} tarea={tarea} parent={id} onEliminar={onEliminar} />
+            <Tarea
+              key={tarea.id}
+              tarea={tarea}
+              parent={id}
+              onEliminar={onEliminar}
+            />
           ))}
         </AnimatePresence>
       </div>
@@ -106,27 +118,23 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
 }
 
 function Tarea({ tarea, parent, onEliminar }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: tarea.id,
-    data: { parent },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: tarea.id,
+      data: { parent },
+    });
 
   const editarTarea = useTareasStore((state) => state.editarTarea);
+
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
-  const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
+  const [nuevaDescripcion, setNuevaDescripcion] = useState(
+    tarea.descripcion || ""
+  );
 
   const formRef = useRef(null);
 
-  // ✅ Actualiza los campos si entra en modo edición
-  useEffect(() => {
-    if (modoEdicion) {
-      setNuevoTitulo(tarea.titulo);
-      setNuevaDescripcion(tarea.descripcion || "");
-    }
-  }, [modoEdicion, tarea.titulo, tarea.descripcion]);
-
-  // ✅ Memoizar para evitar warning de ESLint
+  // Guardar cambios con useCallback (para que el efecto lo detecte)
   const guardarCambios = useCallback(() => {
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
@@ -134,11 +142,17 @@ function Tarea({ tarea, parent, onEliminar }) {
     if (tituloLimpio) {
       editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia);
     }
-
     setModoEdicion(false);
-  }, [nuevoTitulo, nuevaDescripcion, editarTarea, parent, tarea.id]);
+  }, [
+    nuevoTitulo,
+    nuevaDescripcion,
+    editarTarea,
+    parent,
+    tarea.id,
+    setModoEdicion,
+  ]);
 
-  // ✅ Detectar clic fuera del área de edición
+  // Guardar al hacer clic fuera del contenedor de edición
   useEffect(() => {
     if (!modoEdicion) return;
 
@@ -154,6 +168,7 @@ function Tarea({ tarea, parent, onEliminar }) {
     };
   }, [modoEdicion, guardarCambios]);
 
+  // Estilo de movimiento al arrastrar
   const style = transform
     ? {
         transform: `translate(${transform.x}px, ${transform.y}px)`,
@@ -161,7 +176,6 @@ function Tarea({ tarea, parent, onEliminar }) {
         position: "relative",
       }
     : {};
-
 
   return (
     <motion.div
@@ -171,7 +185,7 @@ function Tarea({ tarea, parent, onEliminar }) {
       initial={{ opacity: 0, scale: 0.95 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.2 }}
-      className={`bg-white p-3 rounded-lg shadow flex flex-col gap-2 transition ${
+      className={`bg-white p-3 rounded-lg shadow transition flex flex-col gap-2 ${
         isDragging ? "opacity-50" : "hover:bg-gray-50"
       }`}
     >
@@ -189,23 +203,38 @@ function Tarea({ tarea, parent, onEliminar }) {
             onChange={(e) => setNuevaDescripcion(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault(); // Evita salto de línea
+                e.preventDefault();
                 guardarCambios();
               }
-  }}
-  onBlur={guardarCambios}
-  className="text-sm border border-gray-300 rounded px-2 py-1"
-  placeholder="Añade una descripción..."
+            }}
+            onBlur={guardarCambios}
+            className="text-sm border border-gray-300 rounded px-2 py-1"
+            placeholder="Añade una descripción..."
           />
         </div>
       ) : (
-        <div className="flex justify-between items-start" onDoubleClick={() => setModoEdicion(true)}>
+        <div className="flex justify-between items-start group">
           <div className="flex-1">
-            <p className="font-medium">{tarea.titulo}</p>
+            <p className="font-medium flex items-center gap-2">
+              {tarea.titulo}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModoEdicion(true);
+                }}
+                className="text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition"
+                title="Editar tarea"
+              >
+                ✎
+              </button>
+            </p>
             {tarea.descripcion && (
-              <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {tarea.descripcion}
+              </p>
             )}
           </div>
+
           <div className="flex gap-2 items-start">
             <div
               {...listeners}
