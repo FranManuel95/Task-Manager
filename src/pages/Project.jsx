@@ -29,13 +29,18 @@ export default function Project() {
   const eliminarTarea = useTareasStore((state) => state.eliminarTarea);
   const moverTarea = useTareasStore((state) => state.moverTarea);
 
+  // filtros persistentes desde Zustand
+  const searchTerm = useTareasStore((state) => state.searchTerm);
+  const filterPrioridad = useTareasStore((state) => state.filterPrioridad);
+  const setSearchTerm = useTareasStore((state) => state.setSearchTerm);
+  const setFilterPrioridad = useTareasStore((state) => state.setFilterPrioridad);
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over) return;
 
     const tareaId = active.id;
     const destino = over.id;
-
     if (destino === active.data.current?.parent) return;
 
     moverTarea(tareaId, destino);
@@ -45,23 +50,53 @@ export default function Project() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Proyecto ID: {id}</h1>
 
+      {/* 🔍 Barra de búsqueda y filtro persistentes */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Buscar tareas..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded"
+        />
+        <select
+          value={filterPrioridad}
+          onChange={(e) => setFilterPrioridad(e.target.value)}
+          className="w-full sm:w-1/4 px-3 py-2 border border-gray-300 rounded"
+        >
+          <option value="todas">Todas las prioridades</option>
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {estados.map((estado) => (
-            <Columna
-              key={estado.id}
-              id={estado.id}
-              titulo={estado.titulo}
-              tareas={tareas[estado.id]}
-              onAgregar={agregarTarea}
-              onEliminar={eliminarTarea}
-            />
-          ))}
+          {estados.map((estado) => {
+            const tareasFiltradas = tareas[estado.id].filter(
+              (t) =>
+                t.titulo.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                (filterPrioridad === "todas" || t.prioridad === filterPrioridad)
+            );
+
+            return (
+              <Columna
+                key={estado.id}
+                id={estado.id}
+                titulo={estado.titulo}
+                tareas={tareasFiltradas}
+                onAgregar={agregarTarea}
+                onEliminar={eliminarTarea}
+              />
+            );
+          })}
         </div>
       </DndContext>
     </div>
   );
 }
+
 
 function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -83,7 +118,9 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
         ${isOver ? "border-2 border-blue-400" : "border-transparent"}
       `}
     >
-      <h2 className="text-lg font-semibold mb-4">{titulo}</h2>
+      <h2 className="text-lg font-semibold mb-4">
+        {titulo} <span className="text-sm text-gray-500">({tareas.length})</span>
+      </h2>
 
       <div className="space-y-2 mb-4">
         <AnimatePresence>
@@ -119,13 +156,9 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
 
 function Tarea({ tarea, parent, onEliminar }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: tarea.id,
-      data: { parent },
-    });
+    useDraggable({ id: tarea.id, data: { parent } });
 
   const editarTarea = useTareasStore((state) => state.editarTarea);
-
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
   const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
@@ -133,7 +166,6 @@ function Tarea({ tarea, parent, onEliminar }) {
 
   const formRef = useRef(null);
 
-  // Solo guardar al pulsar Enter, no en blur ni clic fuera
   const guardarCambios = useCallback(() => {
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
@@ -151,16 +183,14 @@ function Tarea({ tarea, parent, onEliminar }) {
   };
 
   const style = transform
-    ? {
-        transform: `translate(${transform.x}px, ${transform.y}px)`,
-        zIndex: 10,
-        position: "relative",
-      }
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10, position: "relative" }
     : {};
 
   return (
     <motion.div
       ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       style={style}
       animate={{ opacity: 1, scale: 1 }}
       initial={{ opacity: 0, scale: 0.95 }}
@@ -232,26 +262,15 @@ function Tarea({ tarea, parent, onEliminar }) {
             )}
           </div>
 
-          <div className="flex gap-2 items-start">
-            <div
-              {...listeners}
-              {...attributes}
-              onClick={(e) => e.stopPropagation()}
-              className="cursor-grab text-gray-400 hover:text-gray-600"
-              title="Arrastrar"
-            >
-              ⠿
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEliminar(parent, tarea.id);
-              }}
-              className="text-red-500 hover:text-red-700 text-sm"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEliminar(parent, tarea.id);
+            }}
+            className="text-red-500 hover:text-red-700 text-sm"
+          >
+            ✕
+          </button>
         </div>
       )}
     </motion.div>

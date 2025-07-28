@@ -6,17 +6,23 @@ export const useTareasStore = create(
     (set) => ({
       tareas: {
         "por-hacer": [
-          { id: "t1", titulo: "Diseñar el logo", descripcion: "Debe representar el branding" },
-          { id: "t2", titulo: "Crear wireframes", descripcion: "" },
-],
+          { id: "t1", titulo: "Diseñar el logo", descripcion: "", prioridad: "media" },
+          { id: "t2", titulo: "Crear wireframes", descripcion: "", prioridad: "baja" },
+        ],
         "en-progreso": [
-          { id: "t3", titulo: "Implementar login", descripcion: "Usar autenticación JWT" },
+          { id: "t3", titulo: "Implementar login", descripcion: "", prioridad: "alta" },
         ],
         "completado": [
-          { id: "t4", titulo: "Configurar Tailwind", descripcion: "Estilos base para el proyecto" },
-          { id: "t5", titulo: "Instalar dependencias", descripcion: "Instalar React y React Router" },
+          { id: "t4", titulo: "Configurar Tailwind", descripcion: "", prioridad: "media" },
         ],
       },
+
+      // 🔎 filtros
+      searchTerm: "",
+      filterPrioridad: "todas",
+
+      setSearchTerm: (term) => set({ searchTerm: term }),
+      setFilterPrioridad: (prioridad) => set({ filterPrioridad: prioridad }),
 
       agregarTarea: (estadoId, titulo) =>
         set((state) => {
@@ -24,9 +30,8 @@ export const useTareasStore = create(
             id: `t${Date.now()}`,
             titulo,
             descripcion: "",
-            prioridad: "media", // nueva propiedad
+            prioridad: "media",
           };
-      
           return {
             tareas: {
               ...state.tareas,
@@ -34,7 +39,6 @@ export const useTareasStore = create(
             },
           };
         }),
-      
 
       eliminarTarea: (estadoId, tareaId) =>
         set((state) => ({
@@ -47,44 +51,43 @@ export const useTareasStore = create(
       moverTarea: (tareaId, destinoId) =>
         set((state) => {
           const nuevaTareas = { ...state.tareas };
-          let tareaMovida;
+          let tareaMovida = null;
 
           for (const estado in nuevaTareas) {
-            nuevaTareas[estado] = nuevaTareas[estado].filter((t) => {
+            const tareasFiltradas = nuevaTareas[estado].filter((t) => {
               if (t.id === tareaId) {
                 tareaMovida = t;
                 return false;
               }
               return true;
-            })
+            });
+            nuevaTareas[estado] = [...tareasFiltradas];
           }
 
-          nuevaTareas[destinoId].push(tareaMovida);
+          if (tareaMovida) {
+            nuevaTareas[destinoId] = [...nuevaTareas[destinoId], tareaMovida];
+          }
 
-          return { tareas: nuevaTareas };
+          return { tareas: { ...nuevaTareas } };
         }),
 
-        editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion, nuevaPrioridad) =>
-  set((state) => ({
-    tareas: {
-      ...state.tareas,
-      [estadoId]: state.tareas[estadoId].map((t) =>
-        t.id === tareaId
-          ? {
-              ...t,
-              titulo: nuevoTitulo ?? t.titulo,
-              descripcion: nuevaDescripcion ?? t.descripcion,
-              prioridad: nuevaPrioridad ?? t.prioridad,
-            }
-          : t
-      ),
-    },
-  })),
-
+      editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion, nuevaPrioridad) =>
+        set((state) => ({
+          tareas: {
+            ...state.tareas,
+            [estadoId]: state.tareas[estadoId].map((t) =>
+              t.id === tareaId
+                ? {
+                    ...t,
+                    titulo: nuevoTitulo ?? t.titulo,
+                    descripcion: nuevaDescripcion ?? t.descripcion,
+                    prioridad: nuevaPrioridad ?? t.prioridad,
+                  }
+                : t
+            ),
+          },
+        })),
     }),
-    
-    {
-      name: "task-manager-storage", // nombre de la clave en localStorage
-    }
+    { name: "task-manager-storage" }
   )
 );
