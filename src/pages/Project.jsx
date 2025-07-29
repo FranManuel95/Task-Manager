@@ -189,8 +189,6 @@ function Tarea({ tarea, parent, onEliminar }) {
   return (
     <motion.div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={style}
       animate={{ opacity: 1, scale: 1 }}
       initial={{ opacity: 0, scale: 0.95 }}
@@ -262,15 +260,27 @@ function Tarea({ tarea, parent, onEliminar }) {
             )}
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEliminar(parent, tarea.id);
-            }}
-            className="text-red-500 hover:text-red-700 text-sm"
-          >
-            ✕
-          </button>
+          <div className="flex gap-2 items-start">
+            {/* Handler exclusivo para arrastrar */}
+            <div
+              {...listeners}
+              {...attributes}
+              onClick={(e) => e.stopPropagation()}
+              className="cursor-grab text-gray-400 hover:text-gray-600"
+              title="Arrastrar"
+            >
+              ⠿
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar(parent, tarea.id);
+              }}
+              className="text-red-500 hover:text-red-700 text-sm"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </motion.div>
