@@ -8,6 +8,7 @@ import {
 import { useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
+import { differenceInHours, parseISO, isBefore } from "date-fns";
 
 const estados = [
   { id: "por-hacer", titulo: "Por hacer" },
@@ -165,8 +166,6 @@ function Tarea({ tarea, parent, onEliminar }) {
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
   const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
   const [prioridad, setPrioridad] = useState(tarea.prioridad || "media");
-
-  // 🆕 Nuevos estados para deadline y etiquetas
   const [deadline, setDeadline] = useState(tarea.deadline || "");
   const [etiquetas, setEtiquetas] = useState(tarea.etiquetas || []);
   const [etiquetaInput, setEtiquetaInput] = useState("");
@@ -197,9 +196,32 @@ function Tarea({ tarea, parent, onEliminar }) {
     }
   };
 
+   // Verificar si la tarea está próxima a vencer
+   let deadlineWarning = null;
+   if (tarea.deadline) {
+     const deadlineDate = parseISO(tarea.deadline);
+     const horasRestantes = differenceInHours(deadlineDate, new Date());
+ 
+     if (isBefore(deadlineDate, new Date())) {
+       deadlineWarning = (
+         <span className="text-red-600 text-xs flex items-center gap-1">
+           ⏰ Vencida
+         </span>
+       );
+     } else if (horasRestantes <= 24) {
+       deadlineWarning = (
+         <span className="text-orange-500 text-xs flex items-center gap-1">
+           ⏰ Próxima a vencer
+         </span>
+       );
+     }
+   }
+
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10, position: "relative" }
     : {};
+  
+  
 
   return (
     <motion.div
@@ -290,7 +312,7 @@ function Tarea({ tarea, parent, onEliminar }) {
       </button>
     </div>
   </div>
-) : (
+      ) : (
 
         <div className="flex justify-between items-start group">
           <div className="flex-1">
@@ -310,9 +332,11 @@ function Tarea({ tarea, parent, onEliminar }) {
             {tarea.descripcion && (
               <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
             )}
-            {tarea.prioridad && (
+            
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">Prioridad: {tarea.prioridad && (
+              
               <span
-                className={`inline-block mt-1 text-xs px-2 py-1 rounded font-medium
+                className={`inline-block text-xs px-2 py-1 rounded font-medium
                   ${
                     tarea.prioridad === "alta"
                       ? "bg-red-100 text-red-700"
@@ -324,12 +348,19 @@ function Tarea({ tarea, parent, onEliminar }) {
                 {tarea.prioridad}
               </span>
             )}
-            {/* 🆕 Mostrar deadline */}
+              </p> 
+            
+            
+            {/* Mostrar deadline */}
             {tarea.deadline && (
-               <p className="text-xs text-gray-500 mt-1">
-               Fecha límite: {tarea.deadline}
-             </p>
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                Fecha limite: {tarea.deadline}
+              </p>
             )}
+
+            {/* Icono de alerta si corresponde */}
+            <div className="gap-2 mt-2 mb-2">{deadlineWarning}</div>
+
             {/* 🆕 Mostrar etiquetas */}
             {tarea.etiquetas?.length > 0 && (
              <div className="flex flex-wrap gap-1 mt-1">
