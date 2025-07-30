@@ -75,12 +75,34 @@ export default function Project() {
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {estados.map((estado) => {
-  const tareasFiltradas = (tareas[estado.id] || []).filter((t) =>
-    (t?.titulo ?? "")
-      .toLowerCase()
-      .includes((searchTerm ?? "").toLowerCase()) &&
-    (filterPrioridad === "todas" || t?.prioridad === filterPrioridad)
-  );
+  const tareasFiltradas = (tareas[estado.id] || [])
+    .filter((t) =>
+      (t?.titulo ?? "")
+        .toLowerCase()
+        .includes((searchTerm ?? "").toLowerCase()) &&
+      (filterPrioridad === "todas" || t?.prioridad === filterPrioridad)
+    )
+    .sort((a, b) => {
+      // 1. Ordenar por prioridad
+      const prioridadOrden = { alta: 1, media: 2, baja: 3 };
+      const prioridadA = prioridadOrden[a.prioridad] || 4;
+      const prioridadB = prioridadOrden[b.prioridad] || 4;
+
+      if (prioridadA !== prioridadB) {
+        return prioridadA - prioridadB;
+      }
+
+      // 2. Si misma prioridad, ordenar por fecha
+      if (a.deadline && b.deadline) {
+        return new Date(a.deadline) - new Date(b.deadline);
+      } else if (a.deadline) {
+        return -1; // las que tienen fecha van primero
+      } else if (b.deadline) {
+        return 1;
+      }
+
+      return 0; // sin cambios si ninguna tiene fecha
+    });
 
   return (
     <Columna
@@ -93,6 +115,7 @@ export default function Project() {
     />
   );
 })}
+
 
         </div>
       </DndContext>
