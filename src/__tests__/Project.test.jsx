@@ -24,11 +24,7 @@ describe("Project component", () => {
   });
 
   test("no debería agregar una tarea vacía", () => {
-    render(
-      <MemoryRouter>
-        <Project />
-      </MemoryRouter>
-    );
+    render(<MemoryRouter><Project /></MemoryRouter>);
   
     const tareasIniciales = screen.getAllByText(/Tarea Test/).length;
   
@@ -39,7 +35,6 @@ describe("Project component", () => {
     const tareasFinales = screen.getAllByText(/Tarea Test/).length;
     expect(tareasFinales).toBe(tareasIniciales); // no aumentó
   });
-  
 
   test("debería permitir eliminar una tarea", async () => {
     render(<MemoryRouter><Project /></MemoryRouter>);
@@ -95,4 +90,19 @@ describe("Project component", () => {
       useTareasStore.getState().tareas["en-progreso"].some((t) => t.id === "1")
     ).toBe(true);
   });
-});
+
+  test("debería permitir agregar etiquetas a una tarea", async () => {
+    render(<MemoryRouter><Project /></MemoryRouter>);
+    const editBtn = screen.getByTitle("Editar tarea");
+    fireEvent.click(editBtn);
+  
+    const etiquetasInput = screen.getByPlaceholderText(/Etiquetas/);
+    fireEvent.change(etiquetasInput, { target: { value: "urgente" } });
+    fireEvent.keyDown(etiquetasInput, { key: "Enter" });
+    fireEvent.keyDown(etiquetasInput, { key: "Enter" }); // para guardar
+  
+    await waitFor(() => {
+      expect(screen.getByText("#urgente")).toBeInTheDocument();
+    });
+  });
+})

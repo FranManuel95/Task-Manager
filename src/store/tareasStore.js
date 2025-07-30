@@ -1,3 +1,4 @@
+// store/tareasStore.js
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -6,88 +7,92 @@ export const useTareasStore = create(
     (set) => ({
       tareas: {
         "por-hacer": [
-          { id: "t1", titulo: "Diseñar el logo", descripcion: "", prioridad: "media" },
-          { id: "t2", titulo: "Crear wireframes", descripcion: "", prioridad: "baja" },
+          {
+            id: "1",
+            titulo: "Tarea Test",
+            descripcion: "",
+            prioridad: "media",
+            deadline: "2025-08-01",
+            etiquetas: ["importante"],
+          },
         ],
-        "en-progreso": [
-          { id: "t3", titulo: "Implementar login", descripcion: "", prioridad: "alta" },
-        ],
-        "completado": [
-          { id: "t4", titulo: "Configurar Tailwind", descripcion: "", prioridad: "media" },
-        ],
+        "en-progreso": [],
+        completado: [],
       },
 
-      // 🔎 filtros
       searchTerm: "",
       filterPrioridad: "todas",
 
       setSearchTerm: (term) => set({ searchTerm: term }),
       setFilterPrioridad: (prioridad) => set({ filterPrioridad: prioridad }),
 
-      agregarTarea: (estadoId, titulo) =>
-        set((state) => {
-          const nuevaTarea = {
-            id: `t${Date.now()}`,
-            titulo,
-            descripcion: "",
-            prioridad: "media",
-          };
-          return {
-            tareas: {
-              ...state.tareas,
-              [estadoId]: [...state.tareas[estadoId], nuevaTarea],
-            },
-          };
-        }),
-
-      eliminarTarea: (estadoId, tareaId) =>
+      agregarTarea: (estado, titulo) =>
         set((state) => ({
           tareas: {
             ...state.tareas,
-            [estadoId]: state.tareas[estadoId].filter((t) => t.id !== tareaId),
+            [estado]: [
+              ...state.tareas[estado],
+              {
+                id: Date.now().toString(),
+                titulo,
+                descripcion: "",
+                prioridad: "media",
+                deadline: null,
+                etiquetas: [],
+              },
+            ],
           },
         })),
 
-      moverTarea: (tareaId, destinoId) =>
-        set((state) => {
-          const nuevaTareas = { ...state.tareas };
-          let tareaMovida = null;
+      eliminarTarea: (estado, id) =>
+        set((state) => ({
+          tareas: {
+            ...state.tareas,
+            [estado]: state.tareas[estado].filter((t) => t.id !== id),
+          },
+        })),
 
-          for (const estado in nuevaTareas) {
-            const tareasFiltradas = nuevaTareas[estado].filter((t) => {
-              if (t.id === tareaId) {
-                tareaMovida = t;
-                return false;
-              }
-              return true;
-            });
-            nuevaTareas[estado] = [...tareasFiltradas];
+      moverTarea: (id, destino) =>
+        set((state) => {
+          let tareaMovida;
+          const nuevasTareas = { ...state.tareas };
+
+          for (const key in nuevasTareas) {
+            const index = nuevasTareas[key].findIndex((t) => t.id === id);
+            if (index !== -1) {
+              tareaMovida = nuevasTareas[key][index];
+              nuevasTareas[key].splice(index, 1);
+              break;
+            }
           }
 
           if (tareaMovida) {
-            nuevaTareas[destinoId] = [...nuevaTareas[destinoId], tareaMovida];
+            nuevasTareas[destino].push(tareaMovida);
           }
 
-          return { tareas: { ...nuevaTareas } };
+          return { tareas: nuevasTareas };
         }),
 
-      editarTarea: (estadoId, tareaId, nuevoTitulo, nuevaDescripcion, nuevaPrioridad) =>
-        set((state) => ({
-          tareas: {
-            ...state.tareas,
-            [estadoId]: state.tareas[estadoId].map((t) =>
-              t.id === tareaId
-                ? {
-                    ...t,
-                    titulo: nuevoTitulo ?? t.titulo,
-                    descripcion: nuevaDescripcion ?? t.descripcion,
-                    prioridad: nuevaPrioridad ?? t.prioridad,
-                  }
-                : t
-            ),
+        editarTarea: (columnaId, tareaId, nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas) => {
+            set((state) => {
+              const nuevasTareas = { ...state.tareas };
+              nuevasTareas[columnaId] = nuevasTareas[columnaId].map((t) =>
+                t.id === tareaId
+                  ? {
+                      ...t,
+                      titulo: nuevoTitulo,
+                      descripcion: nuevaDescripcion,
+                      prioridad,
+                      deadline,
+                      etiquetas,
+                    }
+                  : t
+              );
+              return { tareas: nuevasTareas };
+            });
           },
-        })),
+          
     }),
-    { name: "task-manager-storage" }
+    { name: "tareas-storage" }
   )
 );

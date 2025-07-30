@@ -73,24 +73,26 @@ export default function Project() {
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {estados.map((estado) => {
-            const tareasFiltradas = tareas[estado.id].filter(
-              (t) =>
-                t.titulo.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                (filterPrioridad === "todas" || t.prioridad === filterPrioridad)
-            );
+        {estados.map((estado) => {
+  const tareasFiltradas = (tareas[estado.id] || []).filter((t) =>
+    (t?.titulo ?? "")
+      .toLowerCase()
+      .includes((searchTerm ?? "").toLowerCase()) &&
+    (filterPrioridad === "todas" || t?.prioridad === filterPrioridad)
+  );
 
-            return (
-              <Columna
-                key={estado.id}
-                id={estado.id}
-                titulo={estado.titulo}
-                tareas={tareasFiltradas}
-                onAgregar={agregarTarea}
-                onEliminar={eliminarTarea}
-              />
-            );
-          })}
+  return (
+    <Columna
+      key={estado.id}
+      id={estado.id}
+      titulo={estado.titulo}
+      tareas={tareasFiltradas}
+      onAgregar={agregarTarea}
+      onEliminar={eliminarTarea}
+    />
+  );
+})}
+
         </div>
       </DndContext>
     </div>
@@ -164,21 +166,34 @@ function Tarea({ tarea, parent, onEliminar }) {
   const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
   const [prioridad, setPrioridad] = useState(tarea.prioridad || "media");
 
+  // 🆕 Nuevos estados para deadline y etiquetas
+  const [deadline, setDeadline] = useState(tarea.deadline || "");
+  const [etiquetas, setEtiquetas] = useState(tarea.etiquetas || []);
+  const [etiquetaInput, setEtiquetaInput] = useState("");
+
   const formRef = useRef(null);
 
   const guardarCambios = useCallback(() => {
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
     if (tituloLimpio) {
-      editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia, prioridad);
+      editarTarea(parent, tarea.id, tituloLimpio, descripcionLimpia, prioridad, deadline, etiquetas);
     }
     setModoEdicion(false);
-  }, [nuevoTitulo, nuevaDescripcion, prioridad, editarTarea, parent, tarea.id]);
+  }, [nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas, editarTarea, parent, tarea.id]);
 
   const manejarKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       guardarCambios();
+    }
+  };
+
+  const manejarEtiquetas = (e) => {
+    if (e.key === "Enter" && etiquetaInput.trim()) {
+      e.preventDefault();
+      setEtiquetas((prev) => [...prev, etiquetaInput.trim()]);
+      setEtiquetaInput("");
     }
   };
 
@@ -199,33 +214,84 @@ function Tarea({ tarea, parent, onEliminar }) {
       }`}
     >
       {modoEdicion ? (
-        <div ref={formRef} className="flex flex-col gap-2">
-          <input
-            value={nuevoTitulo}
-            onChange={(e) => setNuevoTitulo(e.target.value)}
-            onKeyDown={manejarKeyDown}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
-            autoFocus
-          />
-          <textarea
-            value={nuevaDescripcion}
-            onChange={(e) => setNuevaDescripcion(e.target.value)}
-            onKeyDown={manejarKeyDown}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
-            placeholder="Añade una descripción..."
-          />
-          <select
-            value={prioridad}
-            onChange={(e) => setPrioridad(e.target.value)}
-            onKeyDown={manejarKeyDown}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
-          >
-            <option value="alta">Alta</option>
-            <option value="media">Media</option>
-            <option value="baja">Baja</option>
-          </select>
-        </div>
-      ) : (
+  <div ref={formRef} className="flex flex-col gap-2">
+    <input
+      value={nuevoTitulo}
+      onChange={(e) => setNuevoTitulo(e.target.value)}
+      onKeyDown={manejarKeyDown}
+      className="text-sm border border-gray-300 rounded px-2 py-1"
+      autoFocus
+    />
+    <textarea
+      value={nuevaDescripcion}
+      onChange={(e) => setNuevaDescripcion(e.target.value)}
+      onKeyDown={manejarKeyDown}
+      className="text-sm border border-gray-300 rounded px-2 py-1"
+      placeholder="Añade una descripción..."
+    />
+    <select
+      value={prioridad}
+      onChange={(e) => setPrioridad(e.target.value)}
+      onKeyDown={manejarKeyDown}
+      className="text-sm border border-gray-300 rounded px-2 py-1"
+    >
+      <option value="alta">Alta</option>
+      <option value="media">Media</option>
+      <option value="baja">Baja</option>
+    </select>
+
+    {/* ✅ Nuevo campo para deadline */}
+    <label className="text-sm text-gray-600">
+      Fecha límite:
+      <input
+        type="date"
+        value={deadline}
+        onChange={(e) => setDeadline(e.target.value)}
+        className="text-sm border border-gray-300 rounded px-2 py-1 mt-1 block"
+        aria-label="Fecha límite"
+      />
+    </label>
+
+    {/* ✅ Campo para etiquetas */}
+    <input
+      type="text"
+      value={etiquetaInput}
+      onChange={(e) => setEtiquetaInput(e.target.value)}
+      onKeyDown={manejarEtiquetas}
+      placeholder="Etiquetas (Enter para añadir)"
+      className="text-sm border border-gray-300 rounded px-2 py-1"
+    />
+
+    {/* Mostrar etiquetas */}
+    <div className="flex flex-wrap gap-1">
+      {etiquetas.map((tag, i) => (
+        <span
+          key={i}
+          className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded"
+        >
+          #{tag}
+        </span>
+      ))}
+    </div>
+
+    {/* ✅ Botón Guardar */}
+    <div className="flex gap-2 mt-2">
+      <button
+        onClick={guardarCambios}
+        className="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-700"
+      >
+        Guardar
+      </button>
+      <button
+        onClick={() => setModoEdicion(false)}
+        className="bg-gray-400 text-white px-3 py-1 text-sm rounded hover:bg-gray-500"
+      >
+        Cancelar
+      </button>
+    </div>
+  </div>
+) : (
+
         <div className="flex justify-between items-start group">
           <div className="flex-1">
             <p className="font-medium flex items-center gap-2">
@@ -258,6 +324,25 @@ function Tarea({ tarea, parent, onEliminar }) {
                 {tarea.prioridad}
               </span>
             )}
+            {/* 🆕 Mostrar deadline */}
+            {tarea.deadline && (
+               <p className="text-xs text-gray-500 mt-1">
+               Fecha límite: {tarea.deadline}
+             </p>
+            )}
+            {/* 🆕 Mostrar etiquetas */}
+            {tarea.etiquetas?.length > 0 && (
+             <div className="flex flex-wrap gap-1 mt-1">
+             {tarea.etiquetas.map((etiqueta, idx) => (
+               <span
+                 key={idx}
+                 className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded"
+               >
+                 #{etiqueta}
+               </span>
+             ))}
+           </div>
+            )}
           </div>
 
           <div className="flex gap-2 items-start">
@@ -286,3 +371,5 @@ function Tarea({ tarea, parent, onEliminar }) {
     </motion.div>
   );
 }
+
+
