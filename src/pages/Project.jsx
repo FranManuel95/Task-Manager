@@ -3,10 +3,13 @@ import {
   DndContext,
   closestCenter,
   useDroppable,
-  useDraggable,
+  DragOverlay,
 } from "@dnd-kit/core";
+import {useDraggable} from "@dnd-kit/core";
+
 import { useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { createPortal } from "react-dom";
 import { useTareasStore } from "../store/tareasStore";
 import { differenceInHours, parseISO, isBefore } from "date-fns";
 
@@ -36,8 +39,16 @@ export default function Project() {
   const setSearchTerm = useTareasStore((state) => state.setSearchTerm);
   const setFilterPrioridad = useTareasStore((state) => state.setFilterPrioridad);
 
+  // 🆕 Estado para DragOverlay
+  const [activeTarea, setActiveTarea] = useState(null);
+
+  const handleDragStart = (event) => {
+    setActiveTarea(event.active.data.current?.tarea || null);
+  };
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    setActiveTarea(null);
     if (!over) return;
 
     const tareaId = active.id;
@@ -50,8 +61,7 @@ export default function Project() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Proyecto ID: {id}</h1>
-
-      {/* 🔍 Barra de búsqueda y filtro persistentes */}
+      
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -72,57 +82,92 @@ export default function Project() {
         </select>
       </div>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {estados.map((estado) => {
-  const tareasFiltradas = (tareas[estado.id] || [])
-    .filter((t) =>
-      (t?.titulo ?? "")
-        .toLowerCase()
-        .includes((searchTerm ?? "").toLowerCase()) &&
-      (filterPrioridad === "todas" || t?.prioridad === filterPrioridad)
-    )
-    .sort((a, b) => {
-      // 1. Ordenar por prioridad
-      const prioridadOrden = { alta: 1, media: 2, baja: 3 };
-      const prioridadA = prioridadOrden[a.prioridad] || 4;
-      const prioridadB = prioridadOrden[b.prioridad] || 4;
+          {estados.map((estado) => {
+            const tareasFiltradas = (tareas[estado.id] || [])
+              .filter(
+                (t) =>
+                  (t?.titulo ?? "")
+                    .toLowerCase()
+                    .includes((searchTerm ?? "").toLowerCase()) &&
+                  (filterPrioridad === "todas" ||
+                    t?.prioridad === filterPrioridad)
+              )
+              .sort((a, b) => {
+                const prioridadOrden = { alta: 1, media: 2, baja: 3 };
+                const prioridadA = prioridadOrden[a.prioridad] || 4;
+                const prioridadB = prioridadOrden[b.prioridad] || 4;
 
-      if (prioridadA !== prioridadB) {
-        return prioridadA - prioridadB;
-      }
+                if (prioridadA !== prioridadB) {
+                  return prioridadA - prioridadB;
+                }
 
-      // 2. Si misma prioridad, ordenar por fecha
-      if (a.deadline && b.deadline) {
-        return new Date(a.deadline) - new Date(b.deadline);
-      } else if (a.deadline) {
-        return -1; // las que tienen fecha van primero
-      } else if (b.deadline) {
-        return 1;
-      }
+                if (a.deadline && b.deadline) {
+                  return new Date(a.deadline) - new Date(b.deadline);
+                } else if (a.deadline) {
+                  return -1;
+                } else if (b.deadline) {
+                  return 1;
+                }
+                return 0;
+              });
 
-      return 0; // sin cambios si ninguna tiene fecha
-    });
-
-  return (
-    <Columna
-      key={estado.id}
-      id={estado.id}
-      titulo={estado.titulo}
-      tareas={tareasFiltradas}
-      onAgregar={agregarTarea}
-      onEliminar={eliminarTarea}
-    />
-  );
-})}
-
-
+            return (
+              <Columna
+                key={estado.id}
+                id={estado.id}
+                titulo={estado.titulo}
+                tareas={tareasFiltradas}
+                onAgregar={agregarTarea}
+                onEliminar={eliminarTarea}
+              />
+            );
+          })}
         </div>
+
+        {/* 🆕 Overlay para la animación al arrastrar */}
+        {createPortal(
+          <DragOverlay>
+            {activeTarea ? (
+              <motion.div
+                className="bg-white shadow-xl rounded-lg p-3"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1.05, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <p className="font-medium">{activeTarea.titulo}</p>
+                {activeTarea.deadline && (
+                  <p className="text-xs text-gray-500">
+                    📅 {activeTarea.deadline}
+                  </p>
+                )}
+                {activeTarea.etiquetas?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {activeTarea.etiquetas.map((etiqueta, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded"
+                      >
+                        #{etiqueta}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            ) : null}
+          </DragOverlay>,
+          document.body
+        )}
       </DndContext>
     </div>
   );
 }
-
 
 function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -182,7 +227,7 @@ function Columna({ id, titulo, tareas, onAgregar, onEliminar }) {
 
 function Tarea({ tarea, parent, onEliminar }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: tarea.id, data: { parent } });
+    useDraggable({ id: tarea.id, data: { parent, tarea } });
 
   const editarTarea = useTareasStore((state) => state.editarTarea);
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -248,16 +293,26 @@ function Tarea({ tarea, parent, onEliminar }) {
 
   return (
     <motion.div
-      ref={setNodeRef}
-      style={style}
-      animate={{ opacity: 1, scale: 1 }}
-      initial={{ opacity: 0, scale: 0.95 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.2 }}
-      className={`bg-white p-3 rounded-lg shadow transition flex flex-col gap-2 ${
-        isDragging ? "opacity-50" : "hover:bg-gray-50"
-      }`}
-    >
+  ref={setNodeRef}
+  style={style}
+  layout={false}
+  animate={{
+    opacity: isDragging ? 0 : 1, // 🔥 Opacidad al arrastrar
+    scale: 1,
+    boxShadow: isDragging
+      ? "0px 8px 20px rgba(0,0,0,0.2)" // 🔥 Sombra más intensa
+      : "0px 2px 5px rgba(0,0,0,0.1)",
+  }}
+  initial={{ opacity: 0, scale: 0.95 }}
+  exit={{ opacity: 0, scale: 0.9 }}
+  transition={{
+    type: "spring",
+    stiffness: 300,
+    damping: 20,
+  }}
+  className={`bg-white p-3 rounded-lg shadow transition flex flex-col gap-2 
+  `}
+>
       {modoEdicion ? (
   <div ref={formRef} className="flex flex-col gap-2">
     <input
@@ -405,8 +460,9 @@ function Tarea({ tarea, parent, onEliminar }) {
               {...listeners}
               {...attributes}
               onClick={(e) => e.stopPropagation()}
-              className="cursor-grab text-gray-400 hover:text-gray-600"
+              className={`text-gray-400 hover:text-gray-600 cursor: isDragging ? "grabbing !important" : "grab"`}
               title="Arrastrar"
+              style={{ cursor: isDragging ? "grabbing !important": "grab" }}
             >
               ⠿
             </div>
