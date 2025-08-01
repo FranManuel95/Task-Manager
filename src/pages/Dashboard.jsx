@@ -42,15 +42,19 @@ export default function Dashboard() {
       }
     });
 
-  const handleCrearProyecto = (e) => {
-    e.preventDefault();
-    const nombreLimpio = nuevoNombre.trim();
-    if (!nombreLimpio) return;
-    agregarProyecto(nombreLimpio, nuevaDescripcion.trim());
-    setNuevoNombre("");
-    setNuevaDescripcion("");
-    setMostrarModal(false);
-  };
+    const [nuevoColor, setNuevoColor] = useState("#3B82F6");
+
+    const handleCrearProyecto = (e) => {
+      e.preventDefault();
+      const nombreLimpio = nuevoNombre.trim();
+      if (!nombreLimpio) return;
+      agregarProyecto(nombreLimpio, nuevaDescripcion.trim(), nuevoColor);
+      setNuevoNombre("");
+      setNuevaDescripcion("");
+      setNuevoColor("#3B82F6");
+      setMostrarModal(false);
+    };
+    
 
   const confirmarEliminar = () => {
     if (proyectoAEliminar) {
@@ -104,9 +108,10 @@ export default function Dashboard() {
 
             return (
               <Link
-                key={proyecto.id}
-                to={`/proyecto/${proyecto.id}`}
-                className="relative block p-4 bg-white rounded-xl shadow hover:shadow-lg transition"
+              key={proyecto.id}
+              to={`/proyecto/${proyecto.id}`}
+              className="relative block p-4 bg-white rounded-xl shadow hover:shadow-lg transition border-4"
+              style={{ borderColor: proyecto.color }}
               >
                 <h2 className="text-xl font-semibold">{proyecto.nombre}</h2>
                 <p className="text-sm text-gray-500 mb-2">{proyecto.descripcion}</p>
@@ -227,6 +232,15 @@ export default function Dashboard() {
             >
               Crear
             </button>
+            <label className="block text-sm font-medium text-gray-700">
+              Color del proyecto
+            </label>
+            <input
+              type="color"
+              value={nuevoColor}
+              onChange={(e) => setNuevoColor(e.target.value)}
+              className="w-16 h-10 cursor-pointer"
+            />
           </div>
         </form>
       </motion.div>

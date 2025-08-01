@@ -23,8 +23,8 @@ export const useTareasStore = create(
 
       setSearchTerm: (term) => set({ searchTerm: term }),
       setFilterPrioridad: (prioridad) => set({ filterPrioridad: prioridad }),
-
-      agregarProyecto: (nombre, descripcion = "") =>
+      
+      agregarProyecto: (nombre, descripcion = "", color = "#3B82F6") =>
         set((state) => {
           const nuevoId = Date.now().toString();
           return {
@@ -34,6 +34,7 @@ export const useTareasStore = create(
                 id: nuevoId,
                 nombre,
                 descripcion,
+                color, // nuevo campo
                 tareas: {
                   "por-hacer": [],
                   "en-progreso": [],
@@ -43,6 +44,7 @@ export const useTareasStore = create(
             },
           };
         }),
+      
 
       agregarTarea: (proyectoId, estado, titulo) =>
         set((state) => {
