@@ -5,20 +5,18 @@ import { persist } from "zustand/middleware";
 export const useTareasStore = create(
   persist(
     (set) => ({
-      tareas: {
-        "por-hacer": [
-          {
-            id: "1",
-            titulo: "Tarea Test",
-            descripcion: "",
-            prioridad: "media",
-            deadline: "2025-08-01",
-            etiquetas: ["importante"],
+        proyectos: {
+            "1": {
+              id: "1",
+              nombre: "Landing Page",
+              descripcion: "Diseño de sitio institucional",
+              tareas: {
+                "por-hacer": [],
+                "en-progreso": [],
+                "completado": []
+              }
+            }
           },
-        ],
-        "en-progreso": [],
-        completado: [],
-      },
 
       searchTerm: "",
       filterPrioridad: "todas",
@@ -26,6 +24,26 @@ export const useTareasStore = create(
       setSearchTerm: (term) => set({ searchTerm: term }),
       setFilterPrioridad: (prioridad) => set({ filterPrioridad: prioridad }),
 
+      agregarProyecto: (nombre, descripcion = "") =>
+        set((state) => {
+          const nuevoId = Date.now().toString();
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [nuevoId]: {
+                id: nuevoId,
+                nombre,
+                descripcion,
+                tareas: {
+                  "por-hacer": [],
+                  "en-progreso": [],
+                  "completado": []
+                }
+              }
+            }
+          };
+        }),
+        
       agregarTarea: (estado, titulo) =>
         set((state) => ({
           tareas: {
