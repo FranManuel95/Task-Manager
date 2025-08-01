@@ -5,18 +5,18 @@ import { persist } from "zustand/middleware";
 export const useTareasStore = create(
   persist(
     (set) => ({
-      proyectos: {
-        "1": {
-          id: "1",
-          nombre: "Landing Page",
-          descripcion: "Diseño de sitio institucional",
-          tareas: {
-            "por-hacer": [],
-            "en-progreso": [],
-            "completado": [],
+        proyectos: {
+          "1": {
+            id: "1",
+            nombre: "Landing Page",
+            descripcion: "Diseño de sitio institucional",
+            tareas: {
+              "por-hacer": [],
+              "en-progreso": [],
+              "completado": [],
+            },
           },
         },
-      },
 
       searchTerm: "",
       filterPrioridad: "todas",
@@ -162,7 +162,15 @@ export const useTareasStore = create(
             },
           };
         }),
+
+        eliminarProyecto: (proyectoId) =>
+            set((state) => {
+              const nuevosProyectos = { ...state.proyectos };
+              delete nuevosProyectos[proyectoId];
+              return { proyectos: nuevosProyectos };
+            }),
     }),
+    
     { name: "tareas-storage" }
   )
 );
