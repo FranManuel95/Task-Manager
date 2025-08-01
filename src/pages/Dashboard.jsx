@@ -12,10 +12,34 @@ export default function Dashboard() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevaDescripcion, setNuevaDescripcion] = useState("");
+  const [orden, setOrden] = useState("recientes");
 
-  const proyectosFiltrados = Object.values(proyectos).filter((p) =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const proyectosFiltrados = Object.values(proyectos)
+    .filter((p) =>
+      p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    )
+    .sort((a, b) => {
+      const totalA = Object.values(a.tareas).flat().length;
+      const totalB = Object.values(b.tareas).flat().length;
+      const compA = a.tareas["completado"].length;
+      const compB = b.tareas["completado"].length;
+
+      switch (orden) {
+        case "recientes":
+          return parseInt(b.id) - parseInt(a.id);
+        case "antiguos":
+          return parseInt(a.id) - parseInt(b.id);
+        case "alfabetico":
+          return a.nombre.localeCompare(b.nombre);
+        case "progreso": {
+          const progresoA = totalA ? compA / totalA : 0;
+          const progresoB = totalB ? compB / totalB : 0;
+          return progresoB - progresoA;
+        }
+        default:
+          return 0;
+      }
+    });
 
   const handleCrearProyecto = (e) => {
     e.preventDefault();
@@ -38,8 +62,8 @@ export default function Dashboard() {
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Tus Proyectos</h1>
 
-      {/* Barra de búsqueda */}
-      <div className="mb-6">
+      {/* Barra de búsqueda y ordenamiento */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"
           value={busqueda}
@@ -47,6 +71,16 @@ export default function Dashboard() {
           placeholder="Buscar proyectos..."
           className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded"
         />
+        <select
+          value={orden}
+          onChange={(e) => setOrden(e.target.value)}
+          className="w-full sm:w-1/4 px-3 py-2 border border-gray-300 rounded"
+        >
+          <option value="recientes">Más recientes</option>
+          <option value="antiguos">Más antiguos</option>
+          <option value="alfabetico">Alfabéticamente</option>
+          <option value="progreso">Mayor progreso</option>
+        </select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -58,7 +92,6 @@ export default function Dashboard() {
           + Nuevo Proyecto
         </button>
 
-        {/* Lista de proyectos */}
         {proyectosFiltrados.length > 0 ? (
           proyectosFiltrados.map((proyecto) => {
             const totalTareas = Object.values(proyecto.tareas).flat().length;
