@@ -5,18 +5,18 @@ import { persist } from "zustand/middleware";
 export const useTareasStore = create(
   persist(
     (set) => ({
-        proyectos: {
-            "1": {
-              id: "1",
-              nombre: "Landing Page",
-              descripcion: "Diseño de sitio institucional",
-              tareas: {
-                "por-hacer": [],
-                "en-progreso": [],
-                "completado": []
-              }
-            }
-          },
+      proyectos: {
+        "1": {
+          id: "1",
+          nombre: "Landing Page",
+          descripcion: "Diseño de sitio institucional",
+          tareas: {
+            "por-hacer": [],
+            "en-progreso": [],
+            "completado": []
+          }
+        }
+      },
 
       searchTerm: "",
       filterPrioridad: "todas",
@@ -43,40 +43,64 @@ export const useTareasStore = create(
             }
           };
         }),
-        
-      agregarTarea: (estado, titulo) =>
-        set((state) => ({
-          tareas: {
-            ...state.tareas,
-            [estado]: [
-              ...state.tareas[estado],
-              {
-                id: Date.now().toString(),
-                titulo,
-                descripcion: "",
-                prioridad: "media",
-                deadline: null,
-                etiquetas: [],
-              },
-            ],
-          },
-        })),
 
-      eliminarTarea: (estado, id) =>
-        set((state) => ({
-          tareas: {
-            ...state.tareas,
-            [estado]: state.tareas[estado].filter((t) => t.id !== id),
-          },
-        })),
-
-      moverTarea: (id, destino) =>
+      agregarTarea: (proyectoId, estado, titulo) =>
         set((state) => {
+          const proyecto = state.proyectos[proyectoId];
+          if (!proyecto) return state;
+
+          const nuevaTarea = {
+            id: Date.now().toString(),
+            titulo,
+            descripcion: "",
+            prioridad: "media",
+            deadline: null,
+            etiquetas: [],
+          };
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [proyectoId]: {
+                ...proyecto,
+                tareas: {
+                  ...proyecto.tareas,
+                  [estado]: [...proyecto.tareas[estado], nuevaTarea],
+                },
+              },
+            },
+          };
+        }),
+
+      eliminarTarea: (proyectoId, estado, id) =>
+        set((state) => {
+          const proyecto = state.proyectos[proyectoId];
+          if (!proyecto) return state;
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [proyectoId]: {
+                ...proyecto,
+                tareas: {
+                  ...proyecto.tareas,
+                  [estado]: proyecto.tareas[estado].filter((t) => t.id !== id),
+                },
+              },
+            },
+          };
+        }),
+
+      moverTarea: (proyectoId, tareaId, destino) =>
+        set((state) => {
+          const proyecto = state.proyectos[proyectoId];
+          if (!proyecto) return state;
+
           let tareaMovida;
-          const nuevasTareas = { ...state.tareas };
+          const nuevasTareas = { ...proyecto.tareas };
 
           for (const key in nuevasTareas) {
-            const index = nuevasTareas[key].findIndex((t) => t.id === id);
+            const index = nuevasTareas[key].findIndex((t) => t.id === tareaId);
             if (index !== -1) {
               tareaMovida = nuevasTareas[key][index];
               nuevasTareas[key].splice(index, 1);
@@ -88,28 +112,46 @@ export const useTareasStore = create(
             nuevasTareas[destino].push(tareaMovida);
           }
 
-          return { tareas: nuevasTareas };
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [proyectoId]: {
+                ...proyecto,
+                tareas: nuevasTareas,
+              },
+            },
+          };
         }),
 
-        editarTarea: (columnaId, tareaId, nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas) => {
-            set((state) => {
-              const nuevasTareas = { ...state.tareas };
-              nuevasTareas[columnaId] = nuevasTareas[columnaId].map((t) =>
-                t.id === tareaId
-                  ? {
-                      ...t,
-                      titulo: nuevoTitulo,
-                      descripcion: nuevaDescripcion,
-                      prioridad,
-                      deadline,
-                      etiquetas,
-                    }
-                  : t
-              );
-              return { tareas: nuevasTareas };
-            });
-          },
-          
+      editarTarea: (proyectoId, columnaId, tareaId, nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas) =>
+        set((state) => {
+          const proyecto = state.proyectos[proyectoId];
+          if (!proyecto) return state;
+
+          const nuevasTareas = { ...proyecto.tareas };
+          nuevasTareas[columnaId] = nuevasTareas[columnaId].map((t) =>
+            t.id === tareaId
+              ? {
+                  ...t,
+                  titulo: nuevoTitulo,
+                  descripcion: nuevaDescripcion,
+                  prioridad,
+                  deadline,
+                  etiquetas,
+                }
+              : t
+          );
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [proyectoId]: {
+                ...proyecto,
+                tareas: nuevasTareas,
+              },
+            },
+          };
+        }),
     }),
     { name: "tareas-storage" }
   )
