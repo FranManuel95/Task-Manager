@@ -11,6 +11,7 @@ export function useProyectoActual() {
   const eliminarTarea = useTareasStore((state) => state.eliminarTarea);
   const moverTarea = useTareasStore((state) => state.moverTarea);
   const editarTarea = useTareasStore((state) => state.editarTarea);
+  const proyectoDeadline = proyecto?.deadline || "";
 
   // filtros
   const searchTerm = useTareasStore((state) => state.searchTerm);
@@ -24,7 +25,8 @@ export function useProyectoActual() {
     agregarTarea,
     eliminarTarea,
     moverTarea,
-    editarTarea, // 👈 añadido aquí
+    editarTarea,
+    proyectoDeadline, // 👈 añadido aquí
     searchTerm,
     filterPrioridad,
     setSearchTerm,

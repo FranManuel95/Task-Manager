@@ -48,34 +48,74 @@ export const useTareasStore = create(
 
       
 
-      agregarTarea: (proyectoId, estado, titulo) =>
-        set((state) => {
-          const proyecto = state.proyectos[proyectoId];
-          if (!proyecto) return state;
-
-          return {
-            proyectos: {
-              ...state.proyectos,
-              [proyectoId]: {
-                ...proyecto,
-                tareas: {
-                  ...proyecto.tareas,
-                  [estado]: [
-                    ...proyecto.tareas[estado],
-                    {
-                      id: Date.now().toString(),
-                      titulo,
-                      descripcion: "",
-                      prioridad: "media",
-                      deadline: null,
-                      etiquetas: [],
-                    },
-                  ],
+  agregarTarea: (proyectoId, estado, titulo, deadline = null) =>
+    set((state) => {
+      const proyecto = state.proyectos[proyectoId];
+      if (!proyecto) return state;
+  
+      // Validar deadline de la tarea contra el del proyecto
+      if (deadline && proyecto.deadline && new Date(deadline) > new Date(proyecto.deadline)) {
+        alert("La fecha de la tarea no puede superar la fecha límite del proyecto");
+        return state;
+      }
+  
+      return {
+        proyectos: {
+          ...state.proyectos,
+          [proyectoId]: {
+            ...proyecto,
+            tareas: {
+              ...proyecto.tareas,
+              [estado]: [
+                ...proyecto.tareas[estado],
+                {
+                  id: Date.now().toString(),
+                  titulo,
+                  descripcion: "",
+                  prioridad: "media",
+                  deadline,
+                  etiquetas: [],
                 },
-              },
+              ],
             },
-          };
-        }),
+          },
+        },
+      };
+    }),
+  
+  editarTarea: (proyectoId, columnaId, tareaId, nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas) =>
+    set((state) => {
+      const proyecto = state.proyectos[proyectoId];
+      if (!proyecto) return state;
+  
+      // Validar deadline de la tarea contra el del proyecto
+      if (deadline && proyecto.deadline && new Date(deadline) > new Date(proyecto.deadline)) {
+        alert("La fecha de la tarea no puede superar la fecha límite del proyecto");
+        return state;
+      }
+  
+      const nuevasTareas = { ...proyecto.tareas };
+      nuevasTareas[columnaId] = nuevasTareas[columnaId].map((t) =>
+        t.id === tareaId
+          ? {
+              ...t,
+              titulo: nuevoTitulo,
+              descripcion: nuevaDescripcion,
+              prioridad,
+              deadline,
+              etiquetas,
+            }
+          : t
+      );
+  
+      return {
+        proyectos: {
+          ...state.proyectos,
+          [proyectoId]: { ...proyecto, tareas: nuevasTareas },
+        },
+      };
+    }),
+  
 
       eliminarTarea: (proyectoId, estado, id) =>
         set((state) => {
@@ -128,44 +168,6 @@ export const useTareasStore = create(
           };
         }),
 
-      editarTarea: (
-        proyectoId,
-        columnaId,
-        tareaId,
-        nuevoTitulo,
-        nuevaDescripcion,
-        prioridad,
-        deadline,
-        etiquetas
-      ) =>
-        set((state) => {
-          const proyecto = state.proyectos[proyectoId];
-          if (!proyecto) return state;
-
-          const nuevasTareas = { ...proyecto.tareas };
-          nuevasTareas[columnaId] = nuevasTareas[columnaId].map((t) =>
-            t.id === tareaId
-              ? {
-                  ...t,
-                  titulo: nuevoTitulo,
-                  descripcion: nuevaDescripcion,
-                  prioridad,
-                  deadline,
-                  etiquetas,
-                }
-              : t
-          );
-
-          return {
-            proyectos: {
-              ...state.proyectos,
-              [proyectoId]: {
-                ...proyecto,
-                tareas: nuevasTareas,
-              },
-            },
-          };
-        }),
 
         eliminarProyecto: (proyectoId) =>
             set((state) => {

@@ -35,6 +35,7 @@ export default function Project() {
     filterPrioridad,
     setSearchTerm,
     setFilterPrioridad,
+    proyectoDeadline
   } = useProyectoActual();
 
   const [activeTarea, setActiveTarea] = useState(null);
@@ -122,6 +123,7 @@ export default function Project() {
                 titulo={estado.titulo}
                 tareas={tareasFiltradas}
                 onAgregar={agregarTarea}
+                proyectoDeadline={proyectoDeadline}
                 onEliminar={eliminarTarea}
                 onEditar={editarTarea} // 👈 pasamos editar también
               />
@@ -207,7 +209,7 @@ function Columna({ proyectoId, id, titulo, tareas, onAgregar, onEliminar, onEdit
   );
 }
 
-function Tarea({ proyectoId, tarea, parent, onEliminar, onEditar }) {
+function Tarea({ proyectoId, tarea, parent, onEliminar, onEditar, proyectoDeadline }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: tarea.id, data: { parent, tarea } });
 
@@ -343,11 +345,12 @@ function Tarea({ proyectoId, tarea, parent, onEliminar, onEditar }) {
           <label className="text-sm text-gray-600">
             Fecha límite:
             <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="text-sm border border-gray-300 rounded px-2 py-1 mt-1 block"
-            />
+  type="date"
+  value={deadline}
+  onChange={(e) => setDeadline(e.target.value)}
+  max={proyectoDeadline || ""} // límite de fecha según el proyecto
+  className="text-sm border border-gray-300 rounded px-2 py-1 mt-1 block"
+/>
           </label>
 
           <input
