@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
+import { parseISO, differenceInDays, isBefore } from "date-fns";
 
 export default function Dashboard() {
   const proyectos = useTareasStore((state) => state.proyectos);
@@ -44,16 +45,19 @@ export default function Dashboard() {
 
     const [nuevoColor, setNuevoColor] = useState("#3B82F6");
 
-    const handleCrearProyecto = (e) => {
-      e.preventDefault();
-      const nombreLimpio = nuevoNombre.trim();
-      if (!nombreLimpio) return;
-      agregarProyecto(nombreLimpio, nuevaDescripcion.trim(), nuevoColor);
-      setNuevoNombre("");
-      setNuevaDescripcion("");
-      setNuevoColor("#3B82F6");
-      setMostrarModal(false);
-    };
+    const [nuevoDeadline, setNuevoDeadline] = useState("");
+
+const handleCrearProyecto = (e) => {
+  e.preventDefault();
+  const nombreLimpio = nuevoNombre.trim();
+  if (!nombreLimpio) return;
+  agregarProyecto(nuevoNombre.trim(), nuevaDescripcion.trim(), nuevoColor, nuevoDeadline || null);
+  setNuevoNombre("");
+  setNuevaDescripcion("");
+  setNuevoColor("#3B82F6");
+  setNuevoDeadline("");
+  setMostrarModal(false);
+};
     
 
   const confirmarEliminar = () => {
@@ -125,6 +129,17 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-600 mt-1">
                   {completadas}/{totalTareas} tareas completadas ({progreso}%)
                 </p>
+                {proyecto.deadline && (
+  <p className={`text-xs mt-2 ${
+    isBefore(parseISO(proyecto.deadline), new Date())
+      ? "text-red-600"
+      : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
+      ? "text-orange-500"
+      : "text-gray-600"
+  }`}>
+    📅 Fecha límite: {proyecto.deadline}
+  </p>
+)}
 
                 {/* Botón eliminar */}
                 <button
@@ -218,6 +233,28 @@ export default function Dashboard() {
             onChange={(e) => setNuevaDescripcion(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded"
           />
+        
+          <div>
+          <label className="block text-sm font-medium text-gray-700">
+              Color del proyecto
+            </label>
+            <input
+              type="color"
+              value={nuevoColor}
+              onChange={(e) => setNuevoColor(e.target.value)}
+              className="w-16 h-10 cursor-pointer"
+            />
+          <div>
+          <label className="block text-sm font-medium text-gray-700">
+  Fecha de entrega
+</label>
+<input
+  type="date"
+  value={nuevoDeadline}
+  onChange={(e) => setNuevoDeadline(e.target.value)}
+  className="w-full px-3 py-2 border border-gray-300 rounded"
+/>
+          </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -232,16 +269,9 @@ export default function Dashboard() {
             >
               Crear
             </button>
-            <label className="block text-sm font-medium text-gray-700">
-              Color del proyecto
-            </label>
-            <input
-              type="color"
-              value={nuevoColor}
-              onChange={(e) => setNuevoColor(e.target.value)}
-              className="w-16 h-10 cursor-pointer"
-            />
+            
           </div>
+        </div>
         </form>
       </motion.div>
     </motion.div>
