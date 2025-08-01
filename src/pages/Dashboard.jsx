@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
 
 export default function Dashboard() {
@@ -8,18 +9,26 @@ export default function Dashboard() {
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
 
   const [busqueda, setBusqueda] = useState("");
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevaDescripcion, setNuevaDescripcion] = useState("");
 
   const proyectosFiltrados = Object.values(proyectos).filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const handleNuevoProyecto = () => {
-    const nuevoNombre = `Proyecto ${Object.keys(proyectos).length + 1}`;
-    agregarProyecto(nuevoNombre, "Descripción opcional");
+  const handleCrearProyecto = (e) => {
+    e.preventDefault();
+    const nombreLimpio = nuevoNombre.trim();
+    if (!nombreLimpio) return;
+    agregarProyecto(nombreLimpio, nuevaDescripcion.trim());
+    setNuevoNombre("");
+    setNuevaDescripcion("");
+    setMostrarModal(false);
   };
 
   const handleEliminar = (e, id) => {
-    e.preventDefault(); // evita que el link se dispare
+    e.preventDefault();
     if (window.confirm("¿Seguro que deseas eliminar este proyecto?")) {
       eliminarProyecto(id);
     }
@@ -41,9 +50,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {/* Botón para crear nuevo proyecto */}
+        {/* Botón para abrir modal */}
         <button
-          onClick={handleNuevoProyecto}
+          onClick={() => setMostrarModal(true)}
           className="flex items-center justify-center p-6 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-lg font-semibold"
         >
           + Nuevo Proyecto
@@ -67,7 +76,6 @@ export default function Dashboard() {
                 <h2 className="text-xl font-semibold">{proyecto.nombre}</h2>
                 <p className="text-sm text-gray-500 mb-2">{proyecto.descripcion}</p>
 
-                {/* Barra de progreso */}
                 <div className="w-full bg-gray-200 h-2 rounded mt-2">
                   <div
                     className="bg-green-500 h-2 rounded"
@@ -78,7 +86,6 @@ export default function Dashboard() {
                   {completadas}/{totalTareas} tareas completadas ({progreso}%)
                 </p>
 
-                {/* Botón eliminar */}
                 <button
                   onClick={(e) => handleEliminar(e, proyecto.id)}
                   className="absolute top-3 right-3 text-red-500 hover:text-red-700 text-sm"
@@ -95,6 +102,59 @@ export default function Dashboard() {
           </p>
         )}
       </div>
+
+      {/* Modal de creación */}
+      <AnimatePresence>
+        {mostrarModal && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="text-xl font-bold mb-4">Crear nuevo proyecto</h2>
+              <form onSubmit={handleCrearProyecto} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Nombre del proyecto"
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                />
+                <textarea
+                  placeholder="Descripción (opcional)"
+                  value={nuevaDescripcion}
+                  onChange={(e) => setNuevaDescripcion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModal(false)}
+                    className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Crear
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
