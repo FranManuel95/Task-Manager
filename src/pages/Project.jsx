@@ -1,4 +1,3 @@
-import { useParams } from "react-router-dom";
 import {
   DndContext,
   closestCenter,
@@ -6,12 +5,11 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
-
 import { useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { createPortal } from "react-dom";
-import { useTareasStore } from "../store/tareasStore";
 import { differenceInHours, parseISO, isBefore } from "date-fns";
+import { useProyectoActual } from "../hooks/useProyectoActual"; // Hook centralizado
 
 const estados = [
   { id: "por-hacer", titulo: "Por hacer" },
@@ -26,18 +24,18 @@ const columnaColors = {
 };
 
 export default function Project() {
-  const { id: proyectoId } = useParams();
-
-  const proyecto = useTareasStore((state) => state.proyectos[proyectoId]);
-  const agregarTarea = useTareasStore((state) => state.agregarTarea);
-  const eliminarTarea = useTareasStore((state) => state.eliminarTarea);
-  const moverTarea = useTareasStore((state) => state.moverTarea);
-
-  // filtros persistentes desde Zustand
-  const searchTerm = useTareasStore((state) => state.searchTerm);
-  const filterPrioridad = useTareasStore((state) => state.filterPrioridad);
-  const setSearchTerm = useTareasStore((state) => state.setSearchTerm);
-  const setFilterPrioridad = useTareasStore((state) => state.setFilterPrioridad);
+  const {
+    proyectoId,
+    proyecto,
+    agregarTarea,
+    eliminarTarea,
+    moverTarea,
+    editarTarea,
+    searchTerm,
+    filterPrioridad,
+    setSearchTerm,
+    setFilterPrioridad,
+  } = useProyectoActual();
 
   const [activeTarea, setActiveTarea] = useState(null);
 
@@ -63,11 +61,10 @@ export default function Project() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">
-        Proyecto: {proyecto.nombre}
-      </h1>
+      <h1 className="text-2xl font-bold mb-6">Proyecto: {proyecto.nombre}</h1>
       <p className="mb-6 text-gray-600">{proyecto.descripcion}</p>
 
+      {/* Buscador y filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -109,17 +106,11 @@ export default function Project() {
                 const prioridadA = prioridadOrden[a.prioridad] || 4;
                 const prioridadB = prioridadOrden[b.prioridad] || 4;
 
-                if (prioridadA !== prioridadB) {
-                  return prioridadA - prioridadB;
-                }
-
-                if (a.deadline && b.deadline) {
+                if (prioridadA !== prioridadB) return prioridadA - prioridadB;
+                if (a.deadline && b.deadline)
                   return new Date(a.deadline) - new Date(b.deadline);
-                } else if (a.deadline) {
-                  return -1;
-                } else if (b.deadline) {
-                  return 1;
-                }
+                if (a.deadline) return -1;
+                if (b.deadline) return 1;
                 return 0;
               });
 
@@ -132,6 +123,7 @@ export default function Project() {
                 tareas={tareasFiltradas}
                 onAgregar={agregarTarea}
                 onEliminar={eliminarTarea}
+                onEditar={editarTarea} // 👈 pasamos editar también
               />
             );
           })}
@@ -148,23 +140,6 @@ export default function Project() {
                 transition={{ duration: 0.2 }}
               >
                 <p className="font-medium">{activeTarea.titulo}</p>
-                {activeTarea.deadline && (
-                  <p className="text-xs text-gray-500">
-                    📅 {activeTarea.deadline}
-                  </p>
-                )}
-                {activeTarea.etiquetas?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {activeTarea.etiquetas.map((etiqueta, idx) => (
-                      <span
-                        key={idx}
-                        className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded"
-                      >
-                        #{etiqueta}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </motion.div>
             ) : null}
           </DragOverlay>,
@@ -175,14 +150,13 @@ export default function Project() {
   );
 }
 
-function Columna({ proyectoId, id, titulo, tareas, onAgregar, onEliminar }) {
+function Columna({ proyectoId, id, titulo, tareas, onAgregar, onEliminar, onEditar }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [nuevaTarea, setNuevaTarea] = useState("");
 
   const handleAgregar = () => {
     const tituloLimpio = nuevaTarea.trim();
     if (!tituloLimpio) return;
-
     onAgregar(proyectoId, id, tituloLimpio);
     setNuevaTarea("");
   };
@@ -208,6 +182,7 @@ function Columna({ proyectoId, id, titulo, tareas, onAgregar, onEliminar }) {
               tarea={tarea}
               parent={id}
               onEliminar={onEliminar}
+              onEditar={onEditar} // 👈 lo pasamos aquí
             />
           ))}
         </AnimatePresence>
@@ -232,11 +207,10 @@ function Columna({ proyectoId, id, titulo, tareas, onAgregar, onEliminar }) {
   );
 }
 
-function Tarea({ proyectoId, tarea, parent, onEliminar }) {
+function Tarea({ proyectoId, tarea, parent, onEliminar, onEditar }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: tarea.id, data: { parent, tarea } });
 
-  const editarTarea = useTareasStore((state) => state.editarTarea);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
   const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
@@ -251,7 +225,7 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
     if (tituloLimpio) {
-      editarTarea(
+      onEditar(
         proyectoId,
         parent,
         tarea.id,
@@ -269,7 +243,7 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
     prioridad,
     deadline,
     etiquetas,
-    editarTarea,
+    onEditar,
     parent,
     tarea.id,
     proyectoId,
@@ -337,7 +311,7 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
         stiffness: 300,
         damping: 20,
       }}
-      className={`bg-white p-3 rounded-lg shadow transition flex flex-col gap-2`}
+      className="bg-white p-3 rounded-lg shadow transition flex flex-col gap-2"
     >
       {modoEdicion ? (
         <div ref={formRef} className="flex flex-col gap-2">
@@ -373,7 +347,6 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               className="text-sm border border-gray-300 rounded px-2 py-1 mt-1 block"
-              aria-label="Fecha límite"
             />
           </label>
 
@@ -431,12 +404,10 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
             {tarea.descripcion && (
               <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>
             )}
-
             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
               Prioridad:{" "}
-              {tarea.prioridad && (
-                <span
-                  className={`inline-block text-xs px-2 py-1 rounded font-medium
+              <span
+                className={`inline-block text-xs px-2 py-1 rounded font-medium
                   ${
                     tarea.prioridad === "alta"
                       ? "bg-red-100 text-red-700"
@@ -444,20 +415,16 @@ function Tarea({ proyectoId, tarea, parent, onEliminar }) {
                       ? "bg-yellow-100 text-yellow-700"
                       : "bg-green-100 text-green-700"
                   }`}
-                >
-                  {tarea.prioridad}
-                </span>
-              )}
+              >
+                {tarea.prioridad}
+              </span>
             </p>
-
             {tarea.deadline && (
               <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                Fecha limite: {tarea.deadline}
+                Fecha límite: {tarea.deadline}
               </p>
             )}
-
             <div className="gap-2 mt-2 mb-2">{deadlineWarning}</div>
-
             {tarea.etiquetas?.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {tarea.etiquetas.map((etiqueta, idx) => (

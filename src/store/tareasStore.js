@@ -13,9 +13,9 @@ export const useTareasStore = create(
           tareas: {
             "por-hacer": [],
             "en-progreso": [],
-            "completado": []
-          }
-        }
+            "completado": [],
+          },
+        },
       },
 
       searchTerm: "",
@@ -37,10 +37,10 @@ export const useTareasStore = create(
                 tareas: {
                   "por-hacer": [],
                   "en-progreso": [],
-                  "completado": []
-                }
-              }
-            }
+                  "completado": [],
+                },
+              },
+            },
           };
         }),
 
@@ -49,15 +49,6 @@ export const useTareasStore = create(
           const proyecto = state.proyectos[proyectoId];
           if (!proyecto) return state;
 
-          const nuevaTarea = {
-            id: Date.now().toString(),
-            titulo,
-            descripcion: "",
-            prioridad: "media",
-            deadline: null,
-            etiquetas: [],
-          };
-
           return {
             proyectos: {
               ...state.proyectos,
@@ -65,7 +56,17 @@ export const useTareasStore = create(
                 ...proyecto,
                 tareas: {
                   ...proyecto.tareas,
-                  [estado]: [...proyecto.tareas[estado], nuevaTarea],
+                  [estado]: [
+                    ...proyecto.tareas[estado],
+                    {
+                      id: Date.now().toString(),
+                      titulo,
+                      descripcion: "",
+                      prioridad: "media",
+                      deadline: null,
+                      etiquetas: [],
+                    },
+                  ],
                 },
               },
             },
@@ -96,8 +97,8 @@ export const useTareasStore = create(
           const proyecto = state.proyectos[proyectoId];
           if (!proyecto) return state;
 
-          let tareaMovida;
           const nuevasTareas = { ...proyecto.tareas };
+          let tareaMovida = null;
 
           for (const key in nuevasTareas) {
             const index = nuevasTareas[key].findIndex((t) => t.id === tareaId);
@@ -123,7 +124,16 @@ export const useTareasStore = create(
           };
         }),
 
-      editarTarea: (proyectoId, columnaId, tareaId, nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas) =>
+      editarTarea: (
+        proyectoId,
+        columnaId,
+        tareaId,
+        nuevoTitulo,
+        nuevaDescripcion,
+        prioridad,
+        deadline,
+        etiquetas
+      ) =>
         set((state) => {
           const proyecto = state.proyectos[proyectoId];
           if (!proyecto) return state;
