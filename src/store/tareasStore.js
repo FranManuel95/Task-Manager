@@ -46,6 +46,39 @@ export const useTareasStore = create(
     };
   }),
 
+  editarProyecto: (id, nombre, descripcion, color, deadline) =>
+    set((state) => {
+      const proyecto = state.proyectos[id];
+      if (!proyecto) return state;
+  
+      // Validación: que las tareas no sobrepasen la nueva fecha límite
+      if (deadline && proyecto.tareas) {
+        for (const columna of Object.values(proyecto.tareas)) {
+          for (const tarea of columna) {
+            if (tarea.deadline && new Date(tarea.deadline) > new Date(deadline)) {
+              alert(
+                `El proyecto tiene tareas con fecha posterior a la nueva fecha límite. Ajusta o elimina esas tareas antes de cambiar la fecha.`
+              );
+              return state;
+            }
+          }
+        }
+      }
+  
+      return {
+        proyectos: {
+          ...state.proyectos,
+          [id]: {
+            ...proyecto,
+            nombre,
+            descripcion,
+            color,
+            deadline,
+          },
+        },
+      };
+    }),
+  
       
 
   agregarTarea: (proyectoId, estado, titulo, deadline = null) =>

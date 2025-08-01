@@ -7,13 +7,18 @@ import { parseISO, differenceInDays, isBefore } from "date-fns";
 export default function Dashboard() {
   const proyectos = useTareasStore((state) => state.proyectos);
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
+  const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
 
   const [busqueda, setBusqueda] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevaDescripcion, setNuevaDescripcion] = useState("");
+  const [nuevoColor, setNuevoColor] = useState("#3B82F6");
+  const [nuevoDeadline, setNuevoDeadline] = useState("");
   const [orden, setOrden] = useState("recientes");
+
+  const [proyectoAEditar, setProyectoAEditar] = useState(null);
   const [proyectoAEliminar, setProyectoAEliminar] = useState(null);
 
   const proyectosFiltrados = Object.values(proyectos)
@@ -43,22 +48,36 @@ export default function Dashboard() {
       }
     });
 
-    const [nuevoColor, setNuevoColor] = useState("#3B82F6");
+  const handleCrearProyecto = (e) => {
+    e.preventDefault();
+    const nombreLimpio = nuevoNombre.trim();
+    if (!nombreLimpio) return;
+    agregarProyecto(
+      nuevoNombre.trim(),
+      nuevaDescripcion.trim(),
+      nuevoColor,
+      nuevoDeadline || null
+    );
+    setNuevoNombre("");
+    setNuevaDescripcion("");
+    setNuevoColor("#3B82F6");
+    setNuevoDeadline("");
+    setMostrarModal(false);
+  };
 
-    const [nuevoDeadline, setNuevoDeadline] = useState("");
+  const handleEditarProyecto = (e) => {
+    e.preventDefault();
+    if (!proyectoAEditar) return;
 
-const handleCrearProyecto = (e) => {
-  e.preventDefault();
-  const nombreLimpio = nuevoNombre.trim();
-  if (!nombreLimpio) return;
-  agregarProyecto(nuevoNombre.trim(), nuevaDescripcion.trim(), nuevoColor, nuevoDeadline || null);
-  setNuevoNombre("");
-  setNuevaDescripcion("");
-  setNuevoColor("#3B82F6");
-  setNuevoDeadline("");
-  setMostrarModal(false);
-};
-    
+    editarProyecto(
+      proyectoAEditar.id,
+      nuevoNombre,
+      nuevaDescripcion,
+      nuevoColor,
+      nuevoDeadline || null
+    );
+    setProyectoAEditar(null);
+  };
 
   const confirmarEliminar = () => {
     if (proyectoAEliminar) {
@@ -112,10 +131,10 @@ const handleCrearProyecto = (e) => {
 
             return (
               <Link
-              key={proyecto.id}
-              to={`/proyecto/${proyecto.id}`}
-              className="relative block p-4 bg-white rounded-xl shadow hover:shadow-lg transition border-4"
-              style={{ borderColor: proyecto.color }}
+                key={proyecto.id}
+                to={`/proyecto/${proyecto.id}`}
+                className="relative block p-4 bg-white rounded-xl shadow hover:shadow-lg transition border-4"
+                style={{ borderColor: proyecto.color }}
               >
                 <h2 className="text-xl font-semibold">{proyecto.nombre}</h2>
                 <p className="text-sm text-gray-500 mb-2">{proyecto.descripcion}</p>
@@ -129,29 +148,47 @@ const handleCrearProyecto = (e) => {
                 <p className="text-xs text-gray-600 mt-1">
                   {completadas}/{totalTareas} tareas completadas ({progreso}%)
                 </p>
-                {proyecto.deadline && (
-  <p className={`text-xs mt-2 ${
-    isBefore(parseISO(proyecto.deadline), new Date())
-      ? "text-red-600"
-      : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
-      ? "text-orange-500"
-      : "text-gray-600"
-  }`}>
-    📅 Fecha límite: {proyecto.deadline}
-  </p>
-)}
 
-                {/* Botón eliminar */}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setProyectoAEliminar(proyecto.id);
-                  }}
-                  className="absolute top-3 right-3 text-red-500 hover:text-red-700 text-sm"
-                  title="Eliminar proyecto"
-                >
-                  ✕
-                </button>
+                {proyecto.deadline && (
+                  <p
+                    className={`text-xs mt-2 ${
+                      isBefore(parseISO(proyecto.deadline), new Date())
+                        ? "text-red-600"
+                        : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
+                        ? "text-orange-500"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    📅 Fecha límite: {proyecto.deadline}
+                  </p>
+                )}
+
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setProyectoAEditar(proyecto);
+                      setNuevoNombre(proyecto.nombre);
+                      setNuevaDescripcion(proyecto.descripcion);
+                      setNuevoColor(proyecto.color);
+                      setNuevoDeadline(proyecto.deadline || "");
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-sm"
+                    title="Editar proyecto"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setProyectoAEliminar(proyecto.id);
+                    }}
+                    className="text-red-500 hover:text-red-700 text-sm"
+                    title="Eliminar proyecto"
+                  >
+                    ✕
+                  </button>
+                </div>
               </Link>
             );
           })
@@ -162,7 +199,149 @@ const handleCrearProyecto = (e) => {
         )}
       </div>
 
-      {/* Modal de confirmación */}
+      {/* Modal de creación */}
+      <AnimatePresence>
+        {mostrarModal && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="text-xl font-bold mb-4">Crear nuevo proyecto</h2>
+              <form onSubmit={handleCrearProyecto} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Nombre del proyecto"
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                />
+                <textarea
+                  placeholder="Descripción (opcional)"
+                  value={nuevaDescripcion}
+                  onChange={(e) => setNuevaDescripcion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+                <label className="block text-sm font-medium text-gray-700">
+                  Color del proyecto
+                </label>
+                <input
+                  type="color"
+                  value={nuevoColor}
+                  onChange={(e) => setNuevoColor(e.target.value)}
+                  className="w-16 h-10 cursor-pointer"
+                />
+                <label className="block text-sm font-medium text-gray-700">
+                  Fecha de entrega
+                </label>
+                <input
+                  type="date"
+                  value={nuevoDeadline}
+                  onChange={(e) => setNuevoDeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModal(false)}
+                    className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    Crear
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de edición */}
+      <AnimatePresence>
+        {proyectoAEditar && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="text-xl font-bold mb-4">Editar proyecto</h2>
+              <form onSubmit={handleEditarProyecto} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Nombre del proyecto"
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                />
+                <textarea
+                  placeholder="Descripción"
+                  value={nuevaDescripcion}
+                  onChange={(e) => setNuevaDescripcion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+                <label className="block text-sm font-medium text-gray-700">
+                  Color del proyecto
+                </label>
+                <input
+                  type="color"
+                  value={nuevoColor}
+                  onChange={(e) => setNuevoColor(e.target.value)}
+                  className="w-16 h-10 cursor-pointer"
+                />
+                <label className="block text-sm font-medium text-gray-700">
+                  Fecha de entrega
+                </label>
+                <input
+                  type="date"
+                  value={nuevoDeadline}
+                  onChange={(e) => setNuevoDeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProyectoAEditar(null)}
+                    className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+                  >
+                    Guardar cambios
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de confirmación de eliminación */}
       <AnimatePresence>
         {proyectoAEliminar && (
           <motion.div
@@ -178,9 +357,12 @@ const handleCrearProyecto = (e) => {
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <h2 className="text-xl font-bold mb-4 text-red-600">Eliminar proyecto</h2>
+              <h2 className="text-xl font-bold mb-4 text-red-600">
+                Eliminar proyecto
+              </h2>
               <p className="mb-4 text-gray-700">
-                ¿Seguro que deseas eliminar este proyecto? Esta acción no se puede deshacer.
+                ¿Seguro que deseas eliminar este proyecto? Esta acción no se puede
+                deshacer.
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -200,84 +382,6 @@ const handleCrearProyecto = (e) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Modal de creación */}
-<AnimatePresence>
-  {mostrarModal && (
-    <motion.div
-      className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        <h2 className="text-xl font-bold mb-4">Crear nuevo proyecto</h2>
-        <form onSubmit={handleCrearProyecto} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Nombre del proyecto"
-            value={nuevoNombre}
-            onChange={(e) => setNuevoNombre(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded"
-            required
-          />
-          <textarea
-            placeholder="Descripción (opcional)"
-            value={nuevaDescripcion}
-            onChange={(e) => setNuevaDescripcion(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded"
-          />
-        
-          <div>
-          <label className="block text-sm font-medium text-gray-700">
-              Color del proyecto
-            </label>
-            <input
-              type="color"
-              value={nuevoColor}
-              onChange={(e) => setNuevoColor(e.target.value)}
-              className="w-16 h-10 cursor-pointer"
-            />
-          <div>
-          <label className="block text-sm font-medium text-gray-700">
-  Fecha de entrega
-</label>
-<input
-  type="date"
-  value={nuevoDeadline}
-  onChange={(e) => setNuevoDeadline(e.target.value)}
-  className="w-full px-3 py-2 border border-gray-300 rounded"
-/>
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setMostrarModal(false)}
-              className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Crear
-            </button>
-            
-          </div>
-        </div>
-        </form>
-      </motion.div>
-    </motion.div>
-  )}
-</AnimatePresence>
-
     </div>
   );
 }
