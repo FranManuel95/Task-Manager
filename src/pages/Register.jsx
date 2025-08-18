@@ -1,37 +1,58 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
+import { useNavigate } from "react-router-dom";
 
 export default function Register() {
   const [email, setEmail] = useState("");
+  const register = useAuthStore((state) => state.register);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
+  const usuario = useAuthStore((state) => state.usuario);
+
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login); // usamos login también para simular el registro
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email) return;
-    login(email);
-    navigate("/dashboard");
+    register(email);
+  };
+
+  useEffect(() => {
+    if (usuario) {
+      navigate("/dashboard");
+    }
+  }, [usuario, navigate]);
+
+  const handleInputChange = (e) => {
+    setEmail(e.target.value);
+    if (error) clearError();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-xl font-semibold mb-4">Registro</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-4"
+      >
+        <h2 className="text-2xl font-bold">Crear cuenta</h2>
+
         <input
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded"
-          required
+          onChange={handleInputChange}
+          className="w-full border border-gray-300 px-3 py-2 rounded"
         />
-        <button type="submit" className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
-          Crear cuenta
+
+        {error && (
+          <p className="text-red-500 text-sm">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+        >
+          Registrarse
         </button>
-        <p className="text-sm text-center mt-4">
-          ¿Ya tienes cuenta? <Link to="/login" className="text-blue-600 hover:underline">Inicia sesión</Link>
-        </p>
       </form>
     </div>
   );

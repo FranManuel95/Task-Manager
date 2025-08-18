@@ -1,37 +1,58 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
-  const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
+  const error = useAuthStore((state) => state.error);
+  const clearError = useAuthStore((state) => state.clearError);
+  const usuario = useAuthStore((state) => state.usuario);
+
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email) return;
     login(email);
-    navigate("/dashboard");
+  };
+
+  useEffect(() => {
+    if (usuario) {
+      navigate("/dashboard");
+    }
+  }, [usuario, navigate]);
+
+  const handleInputChange = (e) => {
+    setEmail(e.target.value);
+    if (error) clearError();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
-        <h2 className="text-xl font-semibold mb-4">Iniciar sesión</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-4"
+      >
+        <h2 className="text-2xl font-bold">Iniciar sesión</h2>
+
         <input
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded"
-          required
+          onChange={handleInputChange}
+          className="w-full border border-gray-300 px-3 py-2 rounded"
         />
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+
+        {error && (
+          <p className="text-red-500 text-sm">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
           Entrar
         </button>
-        <p className="text-sm text-center mt-4">
-          ¿No tienes cuenta? <Link to="/register" className="text-blue-600 hover:underline">Regístrate</Link>
-        </p>
       </form>
     </div>
   );
