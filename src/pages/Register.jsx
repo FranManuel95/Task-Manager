@@ -2,15 +2,15 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 
-export default function Login() {
+export default function Register() {
   const [email, setEmail] = useState("");
-  const login = useAuthStore((state) => state.login);
+  const login = useAuthStore((state) => state.login); // temporalmente usamos login
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email) return;
-    login(email);
+    login(email); // luego será register()
     navigate("/dashboard");
   };
 
@@ -20,11 +20,11 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="bg-white p-6 rounded shadow-md w-full max-w-sm"
       >
-        <h2 className="text-xl font-bold mb-4">Iniciar sesión</h2>
+        <h2 className="text-xl font-bold mb-4">Crear cuenta</h2>
 
         <input
           type="email"
-          placeholder="Tu correo"
+          placeholder="Correo electrónico"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full mb-4 px-3 py-2 border rounded"
@@ -32,15 +32,15 @@ export default function Login() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
         >
-          Entrar
+          Registrarse
         </button>
 
         <p className="text-sm text-center mt-4">
-          ¿No tienes cuenta?{" "}
-          <Link to="/register" className="text-blue-600 hover:underline">
-            Regístrate
+          ¿Ya tienes cuenta?{" "}
+          <Link to="/login" className="text-blue-600 hover:underline">
+            Inicia sesión
           </Link>
         </p>
       </form>

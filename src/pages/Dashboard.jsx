@@ -3,12 +3,18 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
 import { parseISO, differenceInDays, isBefore } from "date-fns";
+import { useAuthStore } from "../store/authStore";
+
+
 
 export default function Dashboard() {
   const proyectos = useTareasStore((state) => state.proyectos);
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
   const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
+
+  const usuario = useAuthStore((state) => state.usuario);
+  const logout = useAuthStore((state) => state.logout);
 
   const [busqueda, setBusqueda] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -88,7 +94,18 @@ export default function Dashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Tus Proyectos</h1>
+      <div className="flex justify-between mb-6">
+    <h1 className="text-3xl font-bold">Tus Proyectos</h1>
+    <div className="text-right text-sm">
+      <p>👤 {usuario?.email}</p>
+      <button
+        onClick={logout}
+        className="text-red-500 hover:underline mt-1"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
 
       {/* Barra de búsqueda y ordenamiento */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
