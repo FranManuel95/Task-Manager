@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const login = useAuthStore((state) => state.login);
   const error = useAuthStore((state) => state.error);
-  const clearError = useAuthStore((state) => state.clearError);
   const usuario = useAuthStore((state) => state.usuario);
-
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
@@ -23,9 +22,13 @@ export default function Login() {
     }
   }, [usuario, navigate]);
 
-  const handleInputChange = () => {
-    if (error) clearError();
-  };
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error])
+
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
@@ -39,21 +42,20 @@ export default function Login() {
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e) => { setEmail(e.target.value); handleInputChange(); }}
+          onChange={(e) => { setEmail(e.target.value);}}
+          autoComplete="current-password" 
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => { setPassword(e.target.value); handleInputChange(); }}
+          onChange={(e) => { setPassword(e.target.value);}}
+          autoComplete="current-password" 
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 
-        {error && (
-          <p className="text-red-500 text-sm">{error}</p>
-        )}
-
+       
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
