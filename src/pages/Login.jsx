@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const login = useAuthStore((state) => state.login);
   const error = useAuthStore((state) => state.error);
   const clearError = useAuthStore((state) => state.clearError);
@@ -13,7 +14,7 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    login(email);
+    login(email, password);
   };
 
   useEffect(() => {
@@ -22,8 +23,7 @@ export default function Login() {
     }
   }, [usuario, navigate]);
 
-  const handleInputChange = (e) => {
-    setEmail(e.target.value);
+  const handleInputChange = () => {
     if (error) clearError();
   };
 
@@ -39,7 +39,14 @@ export default function Login() {
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={handleInputChange}
+          onChange={(e) => { setEmail(e.target.value); handleInputChange(); }}
+          className="w-full border border-gray-300 px-3 py-2 rounded"
+        />
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); handleInputChange(); }}
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 

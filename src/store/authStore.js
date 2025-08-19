@@ -1,65 +1,54 @@
-// store/authStore.js
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       usuario: null,
       error: null,
-      usuariosRegistrados: [],
 
-      login: (email) => {
-        const usuarios = get().usuariosRegistrados;
-        const existe = usuarios.find((u) => u.email === email);
+      login: (email, password) => {
+        const users = JSON.parse(localStorage.getItem("mock-users") || "{}");
+        const user = users[email];
 
-        if (!email) {
-          return set({ error: "El email es obligatorio" });
+        if (!user) {
+          return set({ error: "Usuario no registrado" });
         }
 
-        if (!/\S+@\S+\.\S+/.test(email)) {
-          return set({ error: "El formato del email no es válido" });
+        if (user.password !== password) {
+          return set({ error: "Contraseña incorrecta" });
         }
 
-        if (!existe) {
-          return set({ error: "El usuario no existe" });
-        }
-
-        set({ usuario: existe, error: null });
+        set({ usuario: { email }, error: null });
       },
 
-      register: (email) => {
-        const usuarios = get().usuariosRegistrados;
-
-        if (!email) {
-          return set({ error: "El email es obligatorio" });
+      register: (email, password) => {
+        if (!email || !password) {
+          return set({ error: "Email y contraseña requeridos" });
         }
 
-        if (!/\S+@\S+\.\S+/.test(email)) {
-          return set({ error: "El formato del email no es válido" });
+        if (!email.includes("@")) {
+          return set({ error: "Email inválido" });
         }
 
-        const yaExiste = usuarios.some((u) => u.email === email);
-
-        if (yaExiste) {
-          return set({ error: "Ese email ya está registrado" });
+        if (password.length < 6) {
+          return set({ error: "La contraseña debe tener al menos 6 caracteres" });
         }
 
-        const nuevoUsuario = { email };
-        set({
-          usuariosRegistrados: [...usuarios, nuevoUsuario],
-          usuario: nuevoUsuario,
-          error: null,
-        });
+        const users = JSON.parse(localStorage.getItem("mock-users") || "{}");
+
+        if (users[email]) {
+          return set({ error: "El usuario ya está registrado" });
+        }
+
+        users[email] = { password };
+        localStorage.setItem("mock-users", JSON.stringify(users));
+
+        set({ usuario: { email }, error: null });
       },
 
-      logout: () => {
-        set({ usuario: null });
-      },
-
-      clearError: () => {
-        set({ error: null });
-      },
+      logout: () => set({ usuario: null }),
+      clearError: () => set({ error: null }),
     }),
     {
       name: "auth-storage",
