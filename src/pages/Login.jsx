@@ -10,6 +10,11 @@ export default function Login() {
   const error = useAuthStore((state) => state.error);
   const usuario = useAuthStore((state) => state.usuario);
   const navigate = useNavigate();
+  const clearError = useAuthStore((state) => state.clearError);
+  
+  useEffect(() => {
+  clearError(); 
+}, [clearError]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

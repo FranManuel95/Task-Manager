@@ -8,26 +8,31 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const register = useAuthStore((state) => state.register);
   const error = useAuthStore((state) => state.error);
-  const usuario = useAuthStore((state) => state.usuario);
+
 
   const navigate = useNavigate();
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    register(email, password);
-  };
+  const clearError = useAuthStore((state) => state.clearError);
 
   useEffect(() => {
-    if (usuario) {
-      navigate("/dashboard");
-    }
-  }, [usuario, navigate]);
+  clearError(); // limpia errores al cargar la página
+}, []);
 
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
-  }, [error]);
+useEffect(() => {
+  if (error) {
+    toast.error(error);
+  }
+}, [error]);
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const success = await register(email, password);
+
+  if (success) {
+    toast.success("Registro exitoso. Por favor inicia sesión.");
+    navigate("/login");
+  }
+};
+
 
   
   return (

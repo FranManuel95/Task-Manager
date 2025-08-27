@@ -23,29 +23,35 @@ export const useAuthStore = create(
       },
 
       register: (email, password) => {
-        if (!email || !password) {
-          return set({ error: "Email y contraseña requeridos" });
-        }
+  if (!email || !password) {
+    set({ error: "Email y contraseña requeridos" });
+    return false;
+  }
 
-        if (!email.includes("@")) {
-          return set({ error: "Email inválido" });
-        }
+  if (!email.includes("@")) {
+    set({ error: "Email inválido" });
+    return false;
+  }
 
-        if (password.length < 6) {
-          return set({ error: "La contraseña debe tener al menos 6 caracteres" });
-        }
+  if (password.length < 6) {
+    set({ error: "La contraseña debe tener al menos 6 caracteres" });
+    return false;
+  }
 
-        const users = JSON.parse(localStorage.getItem("mock-users") || "{}");
+  const users = JSON.parse(localStorage.getItem("mock-users") || "{}");
 
-        if (users[email]) {
-          return set({ error: "El usuario ya está registrado" });
-        }
+  if (users[email]) {
+    set({ error: "El usuario ya está registrado" });
+    return false;
+  }
 
-        users[email] = { password };
-        localStorage.setItem("mock-users", JSON.stringify(users));
+  users[email] = { password };
+  localStorage.setItem("mock-users", JSON.stringify(users));
 
-        set({ usuario: { email }, error: null });
-      },
+  set({ error: null });
+  return true;
+},
+
 
       logout: () => set({ usuario: null }),
       clearError: () => set({ error: null }),
