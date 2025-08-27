@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTareasStore } from "../store/tareasStore";
 import { parseISO, differenceInDays, isBefore } from "date-fns";
@@ -8,7 +8,15 @@ import { useAuthStore } from "../store/authStore";
 
 
 export default function Dashboard() {
-  const proyectos = useTareasStore((state) => state.proyectos);
+  const email = useAuthStore((state) => state.usuario?.email);
+  const setUsuarioActual = useTareasStore((state) => state.setUsuarioActual);
+  useEffect(() => {
+  if (email) {
+    setUsuarioActual(email);
+  }
+}, [email, setUsuarioActual]);
+const getProyectosPorUsuario = useTareasStore((state) => state.getProyectosPorUsuario);
+const proyectos = getProyectosPorUsuario(email);
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
   const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
@@ -54,22 +62,26 @@ export default function Dashboard() {
       }
     });
 
-  const handleCrearProyecto = (e) => {
-    e.preventDefault();
-    const nombreLimpio = nuevoNombre.trim();
-    if (!nombreLimpio) return;
-    agregarProyecto(
-      nuevoNombre.trim(),
-      nuevaDescripcion.trim(),
-      nuevoColor,
-      nuevoDeadline || null
-    );
-    setNuevoNombre("");
-    setNuevaDescripcion("");
-    setNuevoColor("#3B82F6");
-    setNuevoDeadline("");
-    setMostrarModal(false);
-  };
+ const handleCrearProyecto = (e) => {
+  e.preventDefault();
+  const nombreLimpio = nuevoNombre.trim();
+  if (!nombreLimpio) return;
+  
+  agregarProyecto(
+    email, 
+    nuevoNombre.trim(),
+    nuevaDescripcion.trim(),
+    nuevoColor,
+    nuevoDeadline || null
+  );
+
+  setNuevoNombre("");
+  setNuevaDescripcion("");
+  setNuevoColor("#3B82F6");
+  setNuevoDeadline("");
+  setMostrarModal(false);
+};
+
 
   const handleEditarProyecto = (e) => {
     e.preventDefault();
