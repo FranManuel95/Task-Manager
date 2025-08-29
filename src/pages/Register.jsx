@@ -13,9 +13,9 @@ export default function Register() {
   const navigate = useNavigate();
   const clearError = useAuthStore((state) => state.clearError);
 
-  useEffect(() => {
-  clearError(); // limpia errores al cargar la página
-}, []);
+useEffect(() => {
+  clearError(); 
+}, [clearError]);
 
 useEffect(() => {
   if (error) {

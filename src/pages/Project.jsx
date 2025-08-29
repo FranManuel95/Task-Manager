@@ -39,7 +39,7 @@ export default function Project() {
   } = useProyectoActual();
 
   const [activeTarea, setActiveTarea] = useState(null);
-
+  
   if (!proyecto) {
     return <p className="p-6 text-red-600">Proyecto no encontrado</p>;
   }

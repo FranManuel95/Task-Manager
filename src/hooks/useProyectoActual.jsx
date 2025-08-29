@@ -1,10 +1,13 @@
 import { useParams } from "react-router-dom";
 import { useTareasStore } from "../store/tareasStore";
+import { useAuthStore } from "../store/authStore";
 
 export function useProyectoActual() {
   const { id: proyectoId } = useParams();
 
-  const proyecto = useTareasStore((state) => state.proyectos[proyectoId]);
+  const { id } = useParams(); // id del proyecto desde la URL
+const email = useAuthStore((state) => state.usuario?.email);
+const proyecto = useTareasStore((state) => state.getProyectoPorId(email, id));
 
   // acciones
   const agregarTarea = useTareasStore((state) => state.agregarTarea);

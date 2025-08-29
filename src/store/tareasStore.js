@@ -36,6 +36,12 @@ export const useTareasStore = create(
         return proyectos[email] || {};
       },
 
+      getProyectoPorId: (email, id) => {
+  const proyectosDelUsuario = get().proyectos[email] || {};
+  return proyectosDelUsuario[id] || null;
+}
+,
+
       agregarProyecto: (email, nombre, descripcion = "", color = "#3B82F6", deadline = null) =>
   set((state) => {
     const nuevoId = Date.now().toString();
