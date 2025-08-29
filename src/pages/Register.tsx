@@ -1,40 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function Register() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+
   const register = useAuthStore((state) => state.register);
   const error = useAuthStore((state) => state.error);
-
-
-  const navigate = useNavigate();
   const clearError = useAuthStore((state) => state.clearError);
 
-useEffect(() => {
-  clearError(); 
-}, [clearError]);
+  const navigate = useNavigate();
 
-useEffect(() => {
-  if (error) {
-    toast.error(error);
-  }
-}, [error]);
+  useEffect(() => {
+    clearError(); // Limpia error anterior al montar
+  }, [clearError]);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  const success = await register(email, password);
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
-  if (success) {
-    toast.success("Registro exitoso. Por favor inicia sesión.");
-    navigate("/login");
-  }
-};
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const success = register(email, password);
 
+    if (success) {
+      toast.success("Registro exitoso. Por favor inicia sesión.");
+      navigate("/login");
+    }
+  };
 
-  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <form
@@ -47,8 +45,8 @@ const handleSubmit = async (e) => {
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e) => { setEmail(e.target.value); }}
-          autoComplete="current-password" 
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+          autoComplete="email"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 
@@ -56,13 +54,10 @@ const handleSubmit = async (e) => {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => { setPassword(e.target.value); }}
-          autoComplete="current-password" 
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+          autoComplete="current-password"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
-
-        
-        
 
         <button
           type="submit"
