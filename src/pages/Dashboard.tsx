@@ -3,7 +3,7 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useTareasStore } from "../store/tareasStore";
 import { parseISO, differenceInDays, isBefore } from "date-fns";
 import { useAuthStore } from "../store/authStore";
-import ModalCrearProyecto from "../components/modals/modalCrearProyecto";
+import ModalCrearProyecto from "../components/modals/ModalCrearProyecto";
 import ModalEditarProyecto from "../components/modals/ModalEditarProyecto";
 import ModalEliminarProyecto from "../components/modals/ModalEliminarProyecto";
 

@@ -2,7 +2,9 @@ import { useState, ChangeEvent } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { AnimatePresence } from "motion/react";
 import Tarea from "./Tarea";
-import { TareaType, EstadoID, Prioridad, columnaColors } from "./constantes";
+import { columnaColors, EstadoID } from "./constantes";
+import { TareaType, Prioridad} from "../../types/tarea";
+
 
 type Props = {
   id: EstadoID;

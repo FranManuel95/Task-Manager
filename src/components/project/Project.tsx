@@ -5,18 +5,16 @@ import {
   DragStartEvent,
   DragEndEvent,
 } from "@dnd-kit/core";
-import { useState, ChangeEvent } from "react";
+import { ChangeEvent } from "react";
 import { motion } from "motion/react";
 import { createPortal } from "react-dom";
 import { useProyectoActual } from "../../hooks/useProyectoActual";
 import Columna from "./Columna";
-import { estados, TareaType, EstadoID, Prioridad } from "./constantes";
+import { ordenPrioridad,EstadoID, estados } from "./constantes";
+import { TareaType, Prioridad} from "../../types/tarea";
+import { useState } from "react";
+import { useTareasStore } from "../../store/tareasStore";
 
-const ordenPrioridad: Record<Prioridad, number> = {
-  alta: 1,
-  media: 2,
-  baja: 3,
-};
 
 export default function Project() {
   const {
@@ -34,6 +32,14 @@ export default function Project() {
   } = useProyectoActual();
 
   const [activeTarea, setActiveTarea] = useState<TareaType | null>(null);
+  const [emailNuevo, setEmailNuevo] = useState<string>("");
+    const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
+
+const handleAgregar = () => {
+    if (!emailNuevo.trim()) return;
+    agregarColaborador(proyectoId as string, emailNuevo.trim());
+    setEmailNuevo("");
+  };
 
   if (!proyecto) {
     return <p className="p-6 text-red-600">Proyecto no encontrado</p>;
@@ -148,7 +154,29 @@ export default function Project() {
           </DragOverlay>,
           document.body
         )}
+       
       </DndContext>
+      <div className="mt-4">
+      <h3 className="font-semibold text-sm mb-2">Invitar colaborador</h3>
+      <div className="flex gap-2">
+        <input
+          type="email"
+          value={emailNuevo}
+          onChange={(e) => setEmailNuevo(e.target.value)}
+          placeholder="Correo del colaborador"
+          className="border px-2 py-1 rounded w-full"
+        />
+        <button
+          onClick={handleAgregar}
+          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+        >
+          Añadir
+        </button>
+      </div>
     </div>
+</div>
+    
+    
   );
+   
 }

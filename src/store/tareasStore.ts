@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
 export type Estado = "por-hacer" | "en-progreso" | "completado";
 export type Prioridad = "alta" | "media" | "baja";
 
@@ -20,6 +19,7 @@ export interface Proyecto {
   color: string;
   deadline: string | null;
   tareas: Record<Estado, Tarea[]>;
+  usuarios: string[]; // ✅ Soporte colaborativo
 }
 
 export interface TareasStore {
@@ -71,6 +71,8 @@ export interface TareasStore {
     deadline: string | null,
     etiquetas: string[]
   ) => void;
+    agregarColaborador: (proyectoId: string, nuevoEmail: string) => void;
+   
 
   eliminarTarea: (proyectoId: string, estado: Estado, id: string) => void;
 
@@ -78,6 +80,7 @@ export interface TareasStore {
 }
 
 export const useTareasStore = create<TareasStore>()(
+  
   persist(
     (set, get) => ({
       usuarioActual: null,
@@ -91,6 +94,7 @@ export const useTareasStore = create<TareasStore>()(
             descripcion: "Diseño de sitio institucional",
             color: "#3B82F6",
             deadline: null,
+            usuarios: ["demo@email.com"],
             tareas: {
               "por-hacer": [],
               "en-progreso": [],
@@ -106,40 +110,67 @@ export const useTareasStore = create<TareasStore>()(
       setFilterPrioridad: (prioridad) => set({ filterPrioridad: prioridad }),
 
       getProyectosPorUsuario: (email) => {
-        return get().proyectos[email] || {};
+        const todos = get().proyectos;
+        const resultado: Record<string, Proyecto> = {};
+
+        for (const usuario of Object.keys(todos)) {
+          for (const [id, proyecto] of Object.entries(todos[usuario])) {
+            if (proyecto.usuarios?.includes(email)) {
+              resultado[id] = proyecto;
+            }
+          }
+        }
+
+        return resultado;
       },
 
       getProyectoPorId: (email, id) => {
-        return get().proyectos[email]?.[id] || null;
+        const todos = get().proyectos;
+        for (const usuario of Object.keys(todos)) {
+          const proyecto = todos[usuario][id];
+          if (proyecto?.usuarios.includes(email)) return proyecto;
+        }
+        return null;
       },
 
-      agregarProyecto: (email, nombre, descripcion = "", color = "#3B82F6", deadline = null) => {
-        const nuevoId = Date.now().toString();
-        set((state) => ({
-          proyectos: {
-            ...state.proyectos,
-            [email]: {
-              ...state.proyectos[email],
-              [nuevoId]: {
-                id: nuevoId,
-                nombre,
-                descripcion,
-                color,
-                deadline,
-                tareas: {
-                  "por-hacer": [],
-                  "en-progreso": [],
-                  "completado": [],
-                },
-              },
-            },
+      agregarProyecto: (
+        email,
+        nombre,
+        descripcion,
+        color,
+        deadline
+      ) => {
+        const nuevoProyecto: Proyecto = {
+          id: Date.now().toString(),
+          nombre,
+          descripcion: descripcion ?? "",
+          color: color ?? "#3B82F6",
+          deadline: deadline ?? null,
+          usuarios: [email], // 👈 Colaborador
+          tareas: {
+            "por-hacer": [],
+            "en-progreso": [],
+            "completado": [],
           },
-        }));
+        };
+
+        const proyectosActuales = get().proyectos[email] || {};
+        const nuevosProyectosUsuario = {
+          ...proyectosActuales,
+          [nuevoProyecto.id]: nuevoProyecto,
+        };
+        set({
+          proyectos: {
+            ...get().proyectos,
+            [email]: nuevosProyectosUsuario,
+          },
+        });
       },
 
       editarProyecto: (id, nombre, descripcion, color, deadline) => {
         const email = get().usuarioActual;
         if (!email) return;
+
         const proyecto = get().proyectos[email]?.[id];
         if (!proyecto) return;
 
@@ -174,6 +205,7 @@ export const useTareasStore = create<TareasStore>()(
       eliminarProyecto: (id) => {
         const email = get().usuarioActual;
         if (!email) return;
+
         set((state) => {
           const nuevosProyectos = { ...state.proyectos[email] };
           delete nuevosProyectos[id];
@@ -189,7 +221,8 @@ export const useTareasStore = create<TareasStore>()(
       agregarTarea: (proyectoId, estado, titulo, deadline = null) => {
         const email = get().usuarioActual;
         if (!email) return;
-        const proyecto = get().proyectos[email]?.[proyectoId];
+
+        const proyecto = get().getProyectoPorId(email, proyectoId);
         if (!proyecto) return;
 
         if (deadline && proyecto.deadline && new Date(deadline) > new Date(proyecto.deadline)) {
@@ -206,21 +239,25 @@ export const useTareasStore = create<TareasStore>()(
           etiquetas: [],
         };
 
-        set((state) => ({
-          proyectos: {
-            ...state.proyectos,
-            [email]: {
-              ...state.proyectos[email],
-              [proyectoId]: {
-                ...proyecto,
-                tareas: {
-                  ...proyecto.tareas,
-                  [estado]: [...proyecto.tareas[estado], nuevaTarea],
+        set((state) => {
+          const nuevasTareas = {
+            ...proyecto.tareas,
+            [estado]: [...proyecto.tareas[estado], nuevaTarea],
+          };
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [email]: {
+                ...state.proyectos[email],
+                [proyectoId]: {
+                  ...proyecto,
+                  tareas: nuevasTareas,
                 },
               },
             },
-          },
-        }));
+          };
+        });
       },
 
       editarTarea: (
@@ -235,7 +272,8 @@ export const useTareasStore = create<TareasStore>()(
       ) => {
         const email = get().usuarioActual;
         if (!email) return;
-        const proyecto = get().proyectos[email]?.[proyectoId];
+
+        const proyecto = get().getProyectoPorId(email, proyectoId);
         if (!proyecto) return;
 
         if (deadline && proyecto.deadline && new Date(deadline) > new Date(proyecto.deadline)) {
@@ -269,30 +307,53 @@ export const useTareasStore = create<TareasStore>()(
       eliminarTarea: (proyectoId, estado, id) => {
         const email = get().usuarioActual;
         if (!email) return;
-        const proyecto = get().proyectos[email]?.[proyectoId];
+
+        const proyecto = get().getProyectoPorId(email, proyectoId);
         if (!proyecto) return;
 
-        set((state) => ({
-          proyectos: {
-            ...state.proyectos,
-            [email]: {
-              ...state.proyectos[email],
-              [proyectoId]: {
-                ...proyecto,
-                tareas: {
-                  ...proyecto.tareas,
-                  [estado]: proyecto.tareas[estado].filter((t) => t.id !== id),
+        set((state) => {
+          const nuevasTareas = {
+            ...proyecto.tareas,
+            [estado]: proyecto.tareas[estado].filter((t) => t.id !== id),
+          };
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [email]: {
+                ...state.proyectos[email],
+                [proyectoId]: {
+                  ...proyecto,
+                  tareas: nuevasTareas,
                 },
               },
             },
-          },
-        }));
+          };
+        });
       },
+      agregarColaborador: (proyectoId: string, nuevoEmail: string) => {
+  const email = get().usuarioActual;
+  if (!email) return;
+
+  const proyectos = get().proyectos;
+  for (const usuario in proyectos) {
+    const proyecto = proyectos[usuario][proyectoId];
+    if (proyecto && proyecto.usuarios.includes(email)) {
+      if (!proyecto.usuarios.includes(nuevoEmail)) {
+        proyecto.usuarios.push(nuevoEmail);
+        set({ proyectos: { ...proyectos } });
+      }
+      return;
+    }
+  }
+},
+
 
       moverTarea: (proyectoId, tareaId, destino) => {
         const email = get().usuarioActual;
         if (!email) return;
-        const proyecto = get().proyectos[email]?.[proyectoId];
+
+        const proyecto = get().getProyectoPorId(email, proyectoId);
         if (!proyecto) return;
 
         const nuevasTareas: Record<Estado, Tarea[]> = { ...proyecto.tareas };

@@ -1,16 +1,7 @@
 // components/project/constantes.ts
+import { Prioridad } from "../../types/tarea";
 
 export type EstadoID = "por-hacer" | "en-progreso" | "completado";
-export type Prioridad = "alta" | "media" | "baja";
-
-export type TareaType = {
-  id: string;
-  titulo: string;
-  descripcion?: string;
-  prioridad?: Prioridad;
-  deadline?: string;
-  etiquetas?: string[];
-};
 
 export const estados: { id: EstadoID; titulo: string }[] = [
   { id: "por-hacer", titulo: "Por hacer" },

@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, ChangeEvent, KeyboardEvent } from "react
 import { motion } from "motion/react";
 import { useDraggable } from "@dnd-kit/core";
 import { parseISO, isBefore, differenceInHours } from "date-fns";
-import { TareaType, EstadoID, Prioridad } from "./constantes";
+import { EstadoID } from "./constantes";
+import { TareaType, Prioridad} from "../../types/tarea";
 
 type Props = {
   proyectoId: string;
