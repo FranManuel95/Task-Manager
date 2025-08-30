@@ -2,17 +2,17 @@ import { useState, useRef, useCallback, ChangeEvent, KeyboardEvent } from "react
 import { motion } from "motion/react";
 import { useDraggable } from "@dnd-kit/core";
 import { parseISO, isBefore, differenceInHours } from "date-fns";
-import { EstadoID } from "./constantes";
-import { TareaType, Prioridad} from "../../types/tarea";
+
+import { Estado, Tarea as TareaModel, Prioridad } from "../../types";
 
 type Props = {
   proyectoId: string;
-  tarea: TareaType;
-  parent: EstadoID;
-  onEliminar: (proyectoId: string, estado: EstadoID, tareaId: string) => void;
+  tarea: TareaModel;
+  parent: Estado;
+  onEliminar: (proyectoId: string, estado: Estado, tareaId: string) => void;
   onEditar: (
     proyectoId: string,
-    estado: EstadoID,
+    estado: Estado,
     tareaId: string,
     titulo: string,
     descripcion: string,
@@ -20,7 +20,7 @@ type Props = {
     deadline: string | null,
     etiquetas: string[]
   ) => void;
-  proyectoDeadline?: string;
+  proyectoDeadline?: string | null;
 };
 
 export default function Tarea({
@@ -29,7 +29,7 @@ export default function Tarea({
   parent,
   onEliminar,
   onEditar,
-  proyectoDeadline
+  proyectoDeadline,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: tarea.id,
@@ -38,10 +38,10 @@ export default function Tarea({
 
   const [modoEdicion, setModoEdicion] = useState(false);
   const [nuevoTitulo, setNuevoTitulo] = useState(tarea.titulo);
-  const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion || "");
-  const [prioridad, setPrioridad] = useState<Prioridad>(tarea.prioridad || "media");
-  const [deadline, setDeadline] = useState(tarea.deadline || "");
-  const [etiquetas, setEtiquetas] = useState<string[]>(tarea.etiquetas || []);
+  const [nuevaDescripcion, setNuevaDescripcion] = useState(tarea.descripcion);
+  const [prioridad, setPrioridad] = useState<Prioridad>(tarea.prioridad);
+  const [deadline, setDeadline] = useState<string>(tarea.deadline ?? "");
+  const [etiquetas, setEtiquetas] = useState<string[]>(tarea.etiquetas);
   const [etiquetaInput, setEtiquetaInput] = useState("");
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -49,10 +49,19 @@ export default function Tarea({
     const tituloLimpio = nuevoTitulo.trim();
     const descripcionLimpia = nuevaDescripcion.trim();
     if (tituloLimpio) {
-      onEditar(proyectoId, parent, tarea.id, tituloLimpio, descripcionLimpia, prioridad, deadline, etiquetas);
+      onEditar(
+        proyectoId,
+        parent,
+        tarea.id,
+        tituloLimpio,
+        descripcionLimpia,
+        prioridad,
+        deadline || null,
+        etiquetas
+      );
     }
     setModoEdicion(false);
-  }, [nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas]);
+  }, [nuevoTitulo, nuevaDescripcion, prioridad, deadline, etiquetas, onEditar, proyectoId, parent, tarea.id]);
 
   const manejarKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -83,10 +92,7 @@ export default function Tarea({
   };
 
   const style = transform
-    ? {
-        transform: `translate(${transform.x}px, ${transform.y}px)`,
-        zIndex: 10,
-      }
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 }
     : undefined;
 
   return (
@@ -102,14 +108,14 @@ export default function Tarea({
         <div ref={formRef} className="flex flex-col gap-2">
           <input
             value={nuevoTitulo}
-            onChange={(e) => setNuevoTitulo(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNuevoTitulo(e.target.value)}
             onKeyDown={manejarKeyDown}
             className="text-sm border border-gray-300 rounded px-2 py-1"
             autoFocus
           />
           <textarea
             value={nuevaDescripcion}
-            onChange={(e) => setNuevaDescripcion(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNuevaDescripcion(e.target.value)}
             onKeyDown={manejarKeyDown}
             className="text-sm border border-gray-300 rounded px-2 py-1"
             placeholder="Añade una descripción..."
@@ -118,6 +124,7 @@ export default function Tarea({
             value={prioridad}
             onChange={(e) => setPrioridad(e.target.value as Prioridad)}
             className="text-sm border border-gray-300 rounded px-2 py-1"
+            aria-label="Prioridad"
           >
             <option value="alta">Alta</option>
             <option value="media">Media</option>
@@ -126,14 +133,14 @@ export default function Tarea({
           <input
             type="date"
             value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-            max={proyectoDeadline || ""}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDeadline(e.target.value)}
+            max={proyectoDeadline ?? ""} /* <- ya no falla null vs undefined */
             className="text-sm border border-gray-300 rounded px-2 py-1"
           />
           <input
             type="text"
             value={etiquetaInput}
-            onChange={(e) => setEtiquetaInput(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEtiquetaInput(e.target.value)}
             onKeyDown={manejarEtiquetas}
             placeholder="Etiquetas (Enter para añadir)"
             className="text-sm border border-gray-300 rounded px-2 py-1"
@@ -165,6 +172,8 @@ export default function Tarea({
                   setModoEdicion(true);
                 }}
                 className="text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100"
+                aria-label="Editar tarea"
+                title="Editar"
               >
                 ✎
               </button>
@@ -186,9 +195,9 @@ export default function Tarea({
             </p>
             {tarea.deadline && <p className="text-xs text-gray-500 mt-1">📅 {tarea.deadline}</p>}
             <div className="mt-1">{warningDeadline()}</div>
-            {(tarea.etiquetas?.length ?? 0) > 0 && (
+            {tarea.etiquetas.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {(tarea.etiquetas ?? []).map((etiqueta, i) => (
+                {tarea.etiquetas.map((etiqueta, i) => (
                   <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
                     #{etiqueta}
                   </span>
@@ -204,6 +213,7 @@ export default function Tarea({
               className="text-gray-400 hover:text-gray-600"
               title="Arrastrar"
               style={{ cursor: isDragging ? "grabbing" : "grab" }}
+              aria-label="Arrastrar tarea"
             >
               ⠿
             </div>
@@ -213,6 +223,8 @@ export default function Tarea({
                 onEliminar(proyectoId, parent, tarea.id);
               }}
               className="text-red-500 hover:text-red-700 text-sm"
+              aria-label="Eliminar tarea"
+              title="Eliminar"
             >
               ✕
             </button>

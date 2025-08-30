@@ -1,12 +1,12 @@
-    // types/tarea.ts
+// types/tarea.ts
+
 export type Prioridad = "alta" | "media" | "baja";
 
-export type TareaType = {
+export interface Tarea {
   id: string;
   titulo: string;
-  descripcion?: string;
-  prioridad?: Prioridad;
-  deadline?: string;
-  etiquetas?: string[];
-  completado?: boolean;
-};
+  descripcion: string;
+  prioridad: Prioridad;
+  deadline?: string | null;
+  etiquetas: string[];
+}

@@ -10,7 +10,7 @@ export default defineConfig([
 
   // JavaScript y JSX
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs['recommended-latest'],

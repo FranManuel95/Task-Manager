@@ -5,16 +5,15 @@ import {
   DragStartEvent,
   DragEndEvent,
 } from "@dnd-kit/core";
-import { ChangeEvent } from "react";
+import { ChangeEvent, useState } from "react";
 import { motion } from "motion/react";
 import { createPortal } from "react-dom";
+
 import { useProyectoActual } from "../../hooks/useProyectoActual";
 import Columna from "./Columna";
-import { ordenPrioridad,EstadoID, estados } from "./constantes";
-import { TareaType, Prioridad} from "../../types/tarea";
-import { useState } from "react";
+import { ordenPrioridad, estados } from "./constantes"; // asegúrate: estados: { id: Estado; titulo: string }[]
+import { Estado, Tarea, Prioridad } from "../../types"; // ← unificado
 import { useTareasStore } from "../../store/tareasStore";
-
 
 export default function Project() {
   const {
@@ -31,14 +30,20 @@ export default function Project() {
     proyectoDeadline,
   } = useProyectoActual();
 
-  const [activeTarea, setActiveTarea] = useState<TareaType | null>(null);
+  const [activeTarea, setActiveTarea] = useState<Tarea | null>(null);
   const [emailNuevo, setEmailNuevo] = useState<string>("");
-    const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
 
-const handleAgregar = () => {
-    if (!emailNuevo.trim()) return;
-    agregarColaborador(proyectoId as string, emailNuevo.trim());
-    setEmailNuevo("");
+  const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
+
+  const handleAgregar = () => {
+    const email = emailNuevo.trim();
+    if (!email) return;
+    // opcional: validar formato
+    // if (!/^\S+@\S+\.\S+$/.test(email)) return alert("Email no válido");
+    if (proyectoId) {
+      agregarColaborador(proyectoId, email);
+      setEmailNuevo("");
+    }
   };
 
   if (!proyecto) {
@@ -46,6 +51,7 @@ const handleAgregar = () => {
   }
 
   const handleDragStart = (event: DragStartEvent) => {
+    // dnd-kit: suele pasarse en data.current algo como { tarea, parent }
     setActiveTarea(event.active.data.current?.tarea ?? null);
   };
 
@@ -55,11 +61,10 @@ const handleAgregar = () => {
     if (!over || !proyectoId) return;
 
     const tareaId = active.id as string;
-    const destino = over.id as EstadoID;
-    const origen = active.data.current?.parent as EstadoID;
+    const destino = over.id as Estado;
+    const origen = active.data.current?.parent as Estado;
 
     if (destino === origen) return;
-
     moverTarea(proyectoId, tareaId, destino);
   };
 
@@ -104,26 +109,24 @@ const handleAgregar = () => {
               const tareasFiltradas = proyecto.tareas[estado.id]
                 .filter(
                   (t) =>
-                    t.titulo
-                      .toLowerCase()
-                      .includes(searchTerm.toLowerCase()) &&
-                    (filterPrioridad === "todas" ||
-                      t.prioridad === filterPrioridad)
+                    t.titulo.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                    (filterPrioridad === "todas" || t.prioridad === filterPrioridad)
                 )
                 .sort((a, b) => {
-                  const aOrden = ordenPrioridad[a.prioridad ?? "media"];
-                  const bOrden = ordenPrioridad[b.prioridad ?? "media"];
+                  // 1) ordenar por prioridad
+                  const aOrden = ordenPrioridad[a.prioridad];
+                  const bOrden = ordenPrioridad[b.prioridad];
                   if (aOrden !== bOrden) return aOrden - bOrden;
 
-                  // Ordenar por deadline si existe
+                  // 2) ordenar por deadline (las más próximas primero)
                   if (a.deadline && b.deadline) {
                     return (
                       new Date(a.deadline).getTime() -
                       new Date(b.deadline).getTime()
                     );
                   }
-                  if (a.deadline) return -1;
-                  if (b.deadline) return 1;
+                  if (a.deadline) return -1; // a tiene fecha, va antes
+                  if (b.deadline) return 1;  // b tiene fecha, va antes
                   return 0;
                 });
 
@@ -154,29 +157,27 @@ const handleAgregar = () => {
           </DragOverlay>,
           document.body
         )}
-       
       </DndContext>
+
+      {/* Invitar colaborador */}
       <div className="mt-4">
-      <h3 className="font-semibold text-sm mb-2">Invitar colaborador</h3>
-      <div className="flex gap-2">
-        <input
-          type="email"
-          value={emailNuevo}
-          onChange={(e) => setEmailNuevo(e.target.value)}
-          placeholder="Correo del colaborador"
-          className="border px-2 py-1 rounded w-full"
-        />
-        <button
-          onClick={handleAgregar}
-          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-        >
-          Añadir
-        </button>
+        <h3 className="font-semibold text-sm mb-2">Invitar colaborador</h3>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={emailNuevo}
+            onChange={(e) => setEmailNuevo(e.target.value)}
+            placeholder="Correo del colaborador"
+            className="border px-2 py-1 rounded w-full"
+          />
+          <button
+            onClick={handleAgregar}
+            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+          >
+            Añadir
+          </button>
+        </div>
       </div>
     </div>
-</div>
-    
-    
   );
-   
 }
