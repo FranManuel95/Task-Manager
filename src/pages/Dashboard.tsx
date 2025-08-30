@@ -25,7 +25,7 @@ type ProyectoType = {
 export default function Dashboard() {
   const email = useAuthStore((state) => state.usuario?.email || "");
   const usuario = useAuthStore((state) => state.usuario);
-  const logout = useAuthStore((state) => state.logout);
+  
   const setUsuarioActual = useTareasStore((state) => state.setUsuarioActual);
   const getProyectosPorUsuario = useTareasStore((state) => state.getProyectosPorUsuario);
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
@@ -91,12 +91,7 @@ export default function Dashboard() {
     <div className="p-6">
       <div className="flex justify-between mb-6">
         <h1 className="text-3xl font-bold">Tus Proyectos</h1>
-        <div className="text-right text-sm">
-          <p>👤 {usuario?.email}</p>
-          <button onClick={logout} className="text-red-500 hover:underline mt-1">
-            Cerrar sesión
-          </button>
-        </div>
+        
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
