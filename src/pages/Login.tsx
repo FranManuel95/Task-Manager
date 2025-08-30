@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+
   const login = useAuthStore((state) => state.login);
   const error = useAuthStore((state) => state.error);
   const usuario = useAuthStore((state) => state.usuario);
-  const navigate = useNavigate();
   const clearError = useAuthStore((state) => state.clearError);
-  
-  useEffect(() => {
-  clearError(); 
-}, [clearError]);
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     login(email, password);
   };
@@ -31,9 +33,7 @@ export default function Login() {
     if (error) {
       toast.error(error);
     }
-  }, [error])
-
-  
+  }, [error]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
@@ -47,20 +47,24 @@ export default function Login() {
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e) => { setEmail(e.target.value);}}
-          autoComplete="current-password" 
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setEmail(e.target.value)
+          }
+          autoComplete="current-password"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
+
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => { setPassword(e.target.value);}}
-          autoComplete="current-password" 
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setPassword(e.target.value)
+          }
+          autoComplete="current-password"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 
-       
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"

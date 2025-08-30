@@ -29,7 +29,7 @@ export function useProyectoActual() {
   const email = useAuthStore((state) => state.usuario?.email || "");
 
   const proyecto = useTareasStore((state) =>
-    state.getProyectoPorId(email, proyectoId)
+    proyectoId ? state.getProyectoPorId(email, proyectoId) : null
   ) as Proyecto | null;
 
   // acciones

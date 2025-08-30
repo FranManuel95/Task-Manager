@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Project from "./pages/Project";
-import Protegido from "./components/Protegido";
+import Project from "./pages/ProjectPage";
+import Protegido from "./components/auth/Protegido";
 import Home from "./pages/Home"; 
 
 export default function App() {
