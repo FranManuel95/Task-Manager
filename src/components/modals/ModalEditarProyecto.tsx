@@ -27,7 +27,7 @@ export default function ModalEditarProyecto({
   onSubmit,
 }: Props) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-100/70 z-50">
       <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Editar proyecto</h2>
         <form onSubmit={onSubmit} className="space-y-4">

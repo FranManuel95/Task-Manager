@@ -91,10 +91,15 @@ export default function Dashboard() {
     <div className="p-6">
       <div className="flex justify-between mb-6">
         <h1 className="text-3xl font-bold">Tus Proyectos</h1>
-        
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <button
+          onClick={() => setMostrarModal(true)}
+          className="flex items-center justify-center p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text font-semibold"
+        >
+           Nuevo Proyecto
+        </button>
         <input
           type="text"
           value={busqueda}
@@ -114,74 +119,126 @@ export default function Dashboard() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        <button
-          onClick={() => setMostrarModal(true)}
-          className="flex items-center justify-center p-6 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-lg font-semibold"
-        >
-          + Nuevo Proyecto
-        </button>
-
+      {/* === REEMPLAZO: Grid -> Tabla responsiva === */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
         {proyectosFiltrados.length > 0 ? (
-          proyectosFiltrados.map((proyecto) => {
-            const total = Object.values(proyecto.tareas).flat().length;
-            const done = proyecto.tareas["completado"]?.length || 0;
-            const progreso = total ? Math.round((done / total) * 100) : 0;
-            return (
-              <Link
-                key={proyecto.id}
-                to={`/proyecto/${proyecto.id}`}
-                className="relative block p-4 bg-white rounded-xl shadow hover:shadow-lg transition border-4"
-                style={{ borderColor: proyecto.color }}
-              >
-                <h2 className="text-xl font-semibold">{proyecto.nombre}</h2>
-                <p className="text-sm text-gray-500 mb-2">{proyecto.descripcion}</p>
-                <div className="w-full bg-gray-200 h-2 rounded mt-2">
-                  <div className="bg-green-500 h-2 rounded" style={{ width: `${progreso}%` }}></div>
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  {done}/{total} tareas completadas ({progreso}%)
-                </p>
-                {proyecto.deadline && (
-                  <p className={`text-xs mt-2 ${
-                    isBefore(parseISO(proyecto.deadline), new Date())
-                      ? "text-red-600"
-                      : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
-                      ? "text-orange-500"
-                      : "text-gray-600"
-                  }`}>
-                    📅 Fecha límite: {proyecto.deadline}
-                  </p>
-                )}
-                <div className="absolute top-3 right-3 flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setProyectoAEditar(proyecto);
-                      setNuevoNombre(proyecto.nombre);
-                      setNuevaDescripcion(proyecto.descripcion);
-                      setNuevoColor(proyecto.color);
-                      setNuevoDeadline(proyecto.deadline || "");
-                    }}
-                    className="text-gray-500 hover:text-gray-700 text-sm"
-                    title="Editar proyecto"
-                  >✎</button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setProyectoAEliminar(proyecto.id);
-                    }}
-                    className="text-red-500 hover:text-red-700 text-sm"
-                    title="Eliminar proyecto"
-                  >✕</button>
-                </div>
-              </Link>
-            );
-          })
+          <table className="min-w-full divide-y divide-gray-200">
+            <caption className="sr-only">Listado de proyectos</caption>
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proyecto</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progreso</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tareas</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Deadline</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Color</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {proyectosFiltrados.map((proyecto) => {
+                const total = Object.values(proyecto.tareas).flat().length;
+                const done = proyecto.tareas["completado"]?.length || 0;
+                const progreso = total ? Math.round((done / total) * 100) : 0;
+
+                const deadlineClass = proyecto.deadline
+                  ? isBefore(parseISO(proyecto.deadline), new Date())
+                    ? "text-red-600"
+                    : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
+                    ? "text-orange-500"
+                    : "text-gray-700"
+                  : "text-gray-400";
+
+                return (
+                  <tr key={proyecto.id} className="hover:bg-gray-50">
+                    {/* Proyecto con Link al detalle (mantiene la navegación) */}
+                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                      <Link
+                        to={`/proyecto/${proyecto.id}`}
+                        className="font-medium text-gray-900 hover:underline"
+                        title="Ver detalle del proyecto"
+                      >
+                        {proyecto.nombre}
+                      </Link>
+                    </td>
+
+                    {/* Descripción */}
+                    <td className="px-4 py-3 align-top text-sm text-gray-600 max-w-[40ch] truncate">{proyecto.descripcion}</td>
+
+                    {/* Progreso con barra + porcentaje */}
+                    <td className="px-4 py-3 align-top w-56">
+                      <div className="w-full bg-gray-200 h-2 rounded">
+                        <div
+                          className="h-2 rounded bg-green-500"
+                          style={{ width: `${progreso}%` }}
+                          aria-valuenow={progreso}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          role="progressbar"
+                        />
+                      </div>
+                      <div className="mt-1 text-xs text-gray-600">{progreso}%</div>
+                    </td>
+
+                    {/* Tareas completadas / total */}
+                    <td className="px-4 py-3 align-top text-sm text-gray-700 whitespace-nowrap">{done}/{total}</td>
+
+                    {/* Deadline con mismo esquema de colores */}
+                    <td className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}>
+                      {proyecto.deadline ? `📅 ${proyecto.deadline}` : "—"}
+                    </td>
+
+                    {/* Color en columna dedicada (swatch + hex) */}
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-5 h-5 rounded-full border border-gray-200 shadow-sm"
+                          style={{ backgroundColor: proyecto.color }}
+                          aria-label={`Color ${proyecto.color}`}
+                          title={proyecto.color}
+                        />
+                        <code className="text-xs text-gray-700">{proyecto.color}</code>
+                      </div>
+                    </td>
+
+                    {/* Acciones Editar / Eliminar (mismas funciones) */}
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setProyectoAEditar(proyecto);
+                            setNuevoNombre(proyecto.nombre);
+                            setNuevaDescripcion(proyecto.descripcion);
+                            setNuevoColor(proyecto.color);
+                            setNuevoDeadline(proyecto.deadline || "");
+                          }}
+                          className="text-gray-500 hover:text-gray-700 text-sm"
+                          title="Editar proyecto"
+                          aria-label={`Editar ${proyecto.nombre}`}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setProyectoAEliminar(proyecto.id);
+                          }}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                          title="Eliminar proyecto"
+                          aria-label={`Eliminar ${proyecto.nombre}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         ) : (
-          <p className="col-span-full text-gray-500 text-center">
-            No se encontraron proyectos. ¡Crea uno para comenzar!
-          </p>
+          <div className="p-6 text-center text-gray-500">No se encontraron proyectos. ¡Crea uno para comenzar!</div>
         )}
       </div>
 
