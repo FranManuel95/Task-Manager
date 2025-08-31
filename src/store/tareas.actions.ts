@@ -1,6 +1,8 @@
-import { Estado, TareasStore } from "./tareas.types";
-import { Prioridad, Tarea } from "../types/tarea";
+// src/store/tareas.actions.ts
+import { TareasStore } from "./tareas.types";
+import { Prioridad, Tarea, Estado } from "@/types";
 import { validateTareaDeadline } from "./tareas.helpers";
+import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 
 export const createTareaActions = (set: any, get: () => TareasStore) => ({
   agregarTarea: (
@@ -12,8 +14,11 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     const email = get().usuarioActual;
     if (!email) return;
 
-    const proyecto = get().getProyectoPorId(email, proyectoId);
-    if (!proyecto) return;
+    const loc = locateProyecto(get(), proyectoId);
+    if (!loc) return;
+
+    const { ownerEmail, proyecto } = loc;
+    if (!canEditProyecto(email, proyecto)) return;
 
     if (!validateTareaDeadline(deadline, proyecto.deadline)) return;
 
@@ -26,25 +31,21 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
       etiquetas: [],
     };
 
-    set((state: TareasStore) => {
-      const nuevasTareas = {
-        ...proyecto.tareas,
-        [estado]: [...proyecto.tareas[estado], nuevaTarea],
-      };
-
-      return {
-        proyectos: {
-          ...state.proyectos,
-          [email]: {
-            ...state.proyectos[email],
-            [proyectoId]: {
-              ...proyecto,
-              tareas: nuevasTareas,
+    set((state: TareasStore) => ({
+      proyectos: {
+        ...state.proyectos,
+        [ownerEmail]: {
+          ...state.proyectos[ownerEmail],
+          [proyectoId]: {
+            ...proyecto,
+            tareas: {
+              ...proyecto.tareas,
+              [estado]: [...proyecto.tareas[estado], nuevaTarea],
             },
           },
         },
-      };
-    });
+      },
+    }));
   },
 
   editarTarea: (
@@ -60,104 +61,112 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     const email = get().usuarioActual;
     if (!email) return;
 
-    const proyecto = get().getProyectoPorId(email, proyectoId);
-    if (!proyecto) return;
+    const loc = locateProyecto(get(), proyectoId);
+    if (!loc) return;
+
+    const { ownerEmail, proyecto } = loc;
+    if (!canEditProyecto(email, proyecto)) return;
 
     if (!validateTareaDeadline(deadline, proyecto.deadline)) return;
 
-    const nuevasTareas = {
-      ...proyecto.tareas,
-      [columnaId]: proyecto.tareas[columnaId].map((t) =>
-        t.id === tareaId
-          ? {
-              ...t,
-              titulo: nuevoTitulo,
-              descripcion: nuevaDescripcion,
-              prioridad,
-              deadline,
-              etiquetas,
-            }
-          : t
-      ),
-    };
+    const nuevasTareasColumna = proyecto.tareas[columnaId].map((t) =>
+      t.id === tareaId
+        ? {
+            ...t,
+            titulo: nuevoTitulo,
+            descripcion: nuevaDescripcion,
+            prioridad,
+            deadline,
+            etiquetas,
+          }
+        : t
+    );
 
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
-        [email]: {
-          ...state.proyectos[email],
+        [ownerEmail]: {
+          ...state.proyectos[ownerEmail],
           [proyectoId]: {
             ...proyecto,
-            tareas: nuevasTareas,
+            tareas: {
+              ...proyecto.tareas,
+              [columnaId]: nuevasTareasColumna,
+            },
           },
         },
       },
     }));
   },
 
-  eliminarTarea: (
-    proyectoId: string,
-    estado: Estado,
-    id: string
-  ): void => {
+  eliminarTarea: (proyectoId: string, estado: Estado, id: string): void => {
     const email = get().usuarioActual;
     if (!email) return;
 
-    const proyecto = get().getProyectoPorId(email, proyectoId);
-    if (!proyecto) return;
+    const loc = locateProyecto(get(), proyectoId);
+    if (!loc) return;
 
-    set((state: TareasStore) => {
-      const nuevasTareas = {
-        ...proyecto.tareas,
-        [estado]: proyecto.tareas[estado].filter((t) => t.id !== id),
-      };
+    const { ownerEmail, proyecto } = loc;
+    if (!canEditProyecto(email, proyecto)) return;
 
-      return {
-        proyectos: {
-          ...state.proyectos,
-          [email]: {
-            ...state.proyectos[email],
-            [proyectoId]: {
-              ...proyecto,
-              tareas: nuevasTareas,
+    const nuevasTareasColumna = proyecto.tareas[estado].filter((t) => t.id !== id);
+
+    set((state: TareasStore) => ({
+      proyectos: {
+        ...state.proyectos,
+        [ownerEmail]: {
+          ...state.proyectos[ownerEmail],
+          [proyectoId]: {
+            ...proyecto,
+            tareas: {
+              ...proyecto.tareas,
+              [estado]: nuevasTareasColumna,
             },
           },
         },
-      };
-    });
+      },
+    }));
   },
 
-  moverTarea: (
-    proyectoId: string,
-    tareaId: string,
-    destino: Estado
-  ): void => {
+  moverTarea: (proyectoId: string, tareaId: string, destino: Estado): void => {
     const email = get().usuarioActual;
     if (!email) return;
 
-    const proyecto = get().getProyectoPorId(email, proyectoId);
-    if (!proyecto) return;
+    const loc = locateProyecto(get(), proyectoId);
+    if (!loc) return;
 
-    const nuevasTareas: Record<Estado, Tarea[]> = { ...proyecto.tareas };
+    const { ownerEmail, proyecto } = loc;
+    if (!canEditProyecto(email, proyecto)) return;
+
+    // Clonado inmutable de las columnas
+    const nuevasTareas: Record<Estado, Tarea[]> = {
+      "por-hacer": [...proyecto.tareas["por-hacer"]],
+      "en-progreso": [...proyecto.tareas["en-progreso"]],
+      "completado": [...proyecto.tareas["completado"]],
+    };
+
     let tareaMovida: Tarea | null = null;
 
     (Object.keys(nuevasTareas) as Estado[]).forEach((key) => {
-      const index = nuevasTareas[key].findIndex((t) => t.id === tareaId);
-      if (index !== -1) {
-        tareaMovida = nuevasTareas[key][index];
-        nuevasTareas[key].splice(index, 1);
+      const idx = nuevasTareas[key].findIndex((t) => t.id === tareaId);
+      if (idx !== -1) {
+        tareaMovida = nuevasTareas[key][idx];
+        nuevasTareas[key] = [
+          ...nuevasTareas[key].slice(0, idx),
+          ...nuevasTareas[key].slice(idx + 1),
+        ];
       }
     });
 
     if (tareaMovida) {
-      nuevasTareas[destino].push(tareaMovida);
+      nuevasTareas[destino] = [...nuevasTareas[destino], tareaMovida];
     }
 
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
-        [email]: {
-          ...state.proyectos[email],
+        [ownerEmail]: {
+          ...state.proyectos[ownerEmail],
           [proyectoId]: {
             ...proyecto,
             tareas: nuevasTareas,

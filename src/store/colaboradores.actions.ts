@@ -1,31 +1,37 @@
-export const createColaboradorActions = (set: any, get: any) => ({
-  agregarColaborador: (proyectoId: string, nuevoEmail: string) => {
-    const email = get().usuarioActual;
-    if (!email) return;
+// src/store/colaboradores.actions.ts
+import { TareasStore } from "./tareas.types";
+import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 
-    const proyectos = get().proyectos;
+export const createColaboradorActions = (set: any, get: () => TareasStore) => ({
+  agregarColaborador: (proyectoId: string, nuevoEmail: string): void => {
+    const emailActual = get().usuarioActual;
+    if (!emailActual) return;
 
-    for (const usuario in proyectos) {
-      const proyecto = proyectos[usuario][proyectoId];
-      if (proyecto && proyecto.usuarios.includes(email)) {
-        if (!proyecto.usuarios.includes(nuevoEmail)) {
-          const nuevosUsuarios = [...proyecto.usuarios, nuevoEmail];
+    const loc = locateProyecto(get(), proyectoId);
+    if (!loc) return;
 
-          set({
-            proyectos: {
-              ...proyectos,
-              [usuario]: {
-                ...proyectos[usuario],
-                [proyectoId]: {
-                  ...proyecto,
-                  usuarios: nuevosUsuarios,
-                },
-              },
-            },
-          });
-        }
-        return;
-      }
-    }
+    const { ownerEmail, proyecto } = loc;
+
+    // Solo quien figure como colaborador puede invitar
+    if (!canEditProyecto(emailActual, proyecto)) return;
+
+    const emailLimpio = (nuevoEmail ?? "").trim().toLowerCase();
+    if (!emailLimpio) return;
+
+    // Evita duplicados
+    if (proyecto.usuarios.includes(emailLimpio)) return;
+
+    set((state: TareasStore) => ({
+      proyectos: {
+        ...state.proyectos,
+        [ownerEmail]: {
+          ...state.proyectos[ownerEmail],
+          [proyectoId]: {
+            ...proyecto,
+            usuarios: [...proyecto.usuarios, emailLimpio],
+          },
+        },
+      },
+    }));
   },
 });
