@@ -14,6 +14,8 @@ import Columna from "./Columna";
 import { ordenPrioridad, estados } from "./constantes"; // asegúrate: estados: { id: Estado; titulo: string }[]
 import { Estado, Tarea, Prioridad } from "../../types"; // ← unificado
 import { useTareasStore } from "../../store/tareasStore";
+import ChatPanel from "./ChatPanel";
+
 
 export default function Project() {
   const {
@@ -178,6 +180,10 @@ export default function Project() {
           </button>
         </div>
       </div>
+      {proyectoId && (
+  <ChatPanel proyectoId={proyectoId} />
+)}
+
     </div>
   );
 }
