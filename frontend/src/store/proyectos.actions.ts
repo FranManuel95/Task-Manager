@@ -5,7 +5,7 @@ import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 import { api } from "../services/api";
 
 export const createProyectoActions = (set: any, get: () => TareasStore) => ({
-  // Devuelve los proyectos en los que el usuario participa (owner o colaborador)
+  // Proyectos visibles para el usuario (owner o colaborador)
   getProyectosPorUsuario: (email: string): Record<string, Proyecto> => {
     const todos = get().proyectos;
     const resultado: Record<string, Proyecto> = {};
@@ -13,16 +13,16 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
 
     for (const owner of Object.keys(todos)) {
       for (const [id, proyecto] of Object.entries(todos[owner])) {
-        const pertenece = (proyecto.usuarios ?? []).some(
-          (u) => u.toLowerCase() === emailLower
-        );
+        const usuarios = (proyecto.usuarios ?? []).map((u) => u.toLowerCase());
+        const creator = (proyecto.creadoPor ?? "").toLowerCase();
+        const pertenece = usuarios.includes(emailLower) || creator === emailLower;
         if (pertenece) resultado[id] = proyecto;
       }
     }
     return resultado;
   },
 
-  // Obtiene un proyecto por id SOLO si el email tiene acceso (colaborador/owner)
+  // Un proyecto por id si el usuario pertenece
   getProyectoPorId: (email: string, id: string): Proyecto | null => {
     const todos = get().proyectos;
     const emailLower = (email ?? "").trim().toLowerCase();
@@ -31,15 +31,15 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
       const proyecto = todos[owner]?.[id];
       if (!proyecto) continue;
 
-      const pertenece = (proyecto.usuarios ?? []).some(
-        (u) => u.toLowerCase() === emailLower
-      );
+      const usuarios = (proyecto.usuarios ?? []).map((u) => u.toLowerCase());
+      const creator = (proyecto.creadoPor ?? "").toLowerCase();
+      const pertenece = usuarios.includes(emailLower) || creator === emailLower;
       if (pertenece) return proyecto;
     }
     return null;
   },
 
-  // Crea un proyecto nuevo (optimista + persistencia en backend)
+  // Crear (optimista + normalización de respuesta)
   agregarProyecto: (
     email: string,
     nombre: string,
@@ -48,8 +48,8 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     deadline?: string | null
   ): void => {
     const emailLower = (email ?? "").trim().toLowerCase();
-
     const tempId = `temp-${Date.now()}`;
+
     const nuevoProyecto: Proyecto = {
       id: tempId,
       nombre,
@@ -65,18 +65,18 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
       },
     };
 
-    const proyectosActuales = get().proyectos[email] || {};
-    const nuevosProyectosUsuario = { ...proyectosActuales, [nuevoProyecto.id]: nuevoProyecto };
+    const proyectosActuales = get().proyectos[emailLower] || {};
+    const nuevosProyectosUsuario = { ...proyectosActuales, [tempId]: nuevoProyecto };
 
     // Optimista
     set({
       proyectos: {
         ...get().proyectos,
-        [email]: nuevosProyectosUsuario,
+        [emailLower]: nuevosProyectosUsuario,
       },
     });
 
-    // Llamada real (no devolvemos Promise para no romper la firma)
+    // Persistencia real
     void (async () => {
       try {
         const created = await api.createProyecto({
@@ -87,34 +87,61 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
           usuarios: nuevoProyecto.usuarios,
         });
 
-        // Reemplazar tempId por el id real
-        const ownerKey = created.creadoPor || email;
         set((state: TareasStore) => {
-          const byOwner = state.proyectos[ownerKey] || {};
-          const entries = Object.entries(byOwner);
-          const mapped = Object.fromEntries(
-            entries.map(([id, p]) => (id === tempId ? [created.id, { ...created, tareas: p.tareas }] : [id, p]))
-          );
+          const next = { ...state.proyectos };
 
-          // Si el ownerKey no existía, nos aseguramos de colocar el proyecto
-          if (!byOwner[tempId]) {
-            mapped[created.id] = created;
+          // tareas que pudiste crear en local sobre el temp
+          const tareasFromTemp =
+            next[emailLower]?.[tempId]?.tareas ?? {
+              "por-hacer": [],
+              "en-progreso": [],
+              "completado": [],
+            };
+
+          // normalizar respuesta del backend para que NO te saque del filtro
+          const normalized: Proyecto = {
+            ...created,
+            creadoPor: (created.creadoPor ?? emailLower).trim().toLowerCase(),
+            usuarios: Array.from(
+              new Set([...(created.usuarios ?? []), emailLower].map((u) => u.toLowerCase()))
+            ),
+            // mantener tareas locales si las hubiera
+            tareas: tareasFromTemp,
+          };
+
+          const ownerKey = normalized.creadoPor; // bucket por creador
+
+          // limpiar el temp de cualquier bucket donde esté
+          if (next[emailLower]?.[tempId]) {
+            const { [tempId]: _drop1, ...rest } = next[emailLower];
+            next[emailLower] = rest;
+          }
+          if (next[ownerKey]?.[tempId]) {
+            const { [tempId]: _drop2, ...rest } = next[ownerKey];
+            next[ownerKey] = rest;
           }
 
-          return {
-            proyectos: {
-              ...state.proyectos,
-              [ownerKey]: mapped,
-            },
+          // insertar el nuevo real
+          const byOwner = next[ownerKey] || {};
+          next[ownerKey] = {
+            ...byOwner,
+            [normalized.id]: normalized,
           };
+
+          return {
+            proyectos: next,
+            // si tu store tiene idRemap, mantenlo; si no, puedes quitar esta línea
+            idRemap: { ...(state as any).idRemap, [tempId]: normalized.id },
+          } as Partial<TareasStore>;
         });
       } catch (err) {
         console.warn("createProyecto (backend) falló, manteniendo local:", err);
+        // Nota: dejamos el temp visible si falla la API.
       }
     })();
   },
 
-  // Edita un proyecto si el usuario actual es colaborador (o owner)
+  // Editar
   editarProyecto: (
     id: string,
     nombre: string,
@@ -122,14 +149,14 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     color: string,
     deadline: string | null
   ): void => {
-    const email = get().usuarioActual;
+    const emailLower = (get().usuarioActual ?? "").trim().toLowerCase();
     const loc = locateProyecto(get(), id);
     if (!loc) return;
 
     const { ownerEmail, proyecto } = loc;
-    if (!canEditProyecto(email, proyecto)) return;
+    if (!canEditProyecto(emailLower, proyecto)) return;
 
-    // Validación de deadlines: no permitir tareas con fecha posterior a la nueva fecha límite
+    // Validación de deadlines (no permitir tareas con fecha > nueva fecha de proyecto)
     if (deadline) {
       for (const col of Object.values(proyecto.tareas)) {
         for (const t of col) {
@@ -162,13 +189,14 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     })();
   },
 
-  // Elimina un proyecto si el usuario actual es colaborador (o owner)
+  // Eliminar
   eliminarProyecto: (id: string): void => {
-    const email = get().usuarioActual;
+    const emailLower = (get().usuarioActual ?? "").trim().toLowerCase();
     const loc = locateProyecto(get(), id);
     if (!loc) return;
 
     const { ownerEmail } = loc;
+
     // Optimista
     set((state: TareasStore) => {
       const nuevos = { ...state.proyectos[ownerEmail] };

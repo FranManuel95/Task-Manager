@@ -1,30 +1,43 @@
-import { useParams } from "react-router-dom";
+// src/hooks/useProyectoActual.ts
+import { useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTareasStore } from "../store/tareasStore";
 import { useAuthStore } from "../store/authStore";
 import type { Proyecto } from "../types";
 
 export function useProyectoActual() {
-  const { id: proyectoId } = useParams<{ id: string }>();
-  const email = useAuthStore((state) => state.usuario?.email || "");
+  const { id: paramId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const email = useAuthStore((s) => s.usuario?.email || "");
+  const emailLower = (email ?? "").trim().toLowerCase();
+
+  const idRemap = useTareasStore((s) => s.idRemap);
+  const realId = useMemo(() => (paramId && idRemap[paramId]) || paramId || "", [paramId, idRemap]);
+
+  useEffect(() => {
+    if (!paramId) return;
+    const mapped = idRemap[paramId];
+    if (paramId.startsWith("temp-") && mapped && mapped !== paramId) {
+      navigate(`/proyecto/${mapped}`, { replace: true });
+    }
+  }, [paramId, idRemap, navigate]);
 
   const proyecto = useTareasStore((state) =>
-    proyectoId ? state.getProyectoPorId(email, proyectoId) : null
-  ) as Proyecto | null;
+    realId ? (state.getProyectoPorId(emailLower, realId) as Proyecto | null) : null
+  );
 
-  // acciones
-  const agregarTarea = useTareasStore((state) => state.agregarTarea);
-  const eliminarTarea = useTareasStore((state) => state.eliminarTarea);
-  const moverTarea   = useTareasStore((state) => state.moverTarea);
-  const editarTarea  = useTareasStore((state) => state.editarTarea);
+  const agregarTarea = useTareasStore((s) => s.agregarTarea);
+  const eliminarTarea = useTareasStore((s) => s.eliminarTarea);
+  const moverTarea = useTareasStore((s) => s.moverTarea);
+  const editarTarea = useTareasStore((s) => s.editarTarea);
 
-  // filtros
-  const searchTerm          = useTareasStore((state) => state.searchTerm);
-  const filterPrioridad     = useTareasStore((state) => state.filterPrioridad);
-  const setSearchTerm       = useTareasStore((state) => state.setSearchTerm);
-  const setFilterPrioridad  = useTareasStore((state) => state.setFilterPrioridad);
+  const searchTerm = useTareasStore((s) => s.searchTerm);
+  const filterPrioridad = useTareasStore((s) => s.filterPrioridad);
+  const setSearchTerm = useTareasStore((s) => s.setSearchTerm);
+  const setFilterPrioridad = useTareasStore((s) => s.setFilterPrioridad);
 
   return {
-    proyectoId,
+    proyectoId: realId,
     proyecto,
     agregarTarea,
     eliminarTarea,

@@ -1,9 +1,8 @@
 {
-  "name": "task-manager-api",
+  "name": "api-task-manager",
   "version": "1.0.0",
-  "private": true,
-  "type": "commonjs",
-  "main": "src/server.js",
+  "description": "API simple en memoria para Task Manager",
+  "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js"
@@ -11,6 +10,8 @@
   "dependencies": {
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1"
   }
 }

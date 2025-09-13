@@ -1,3 +1,4 @@
+// src/components/project/ChatPanel.tsx
 import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { useTareasStore } from "../../store/tareasStore";
@@ -9,19 +10,16 @@ type Props = {
   className?: string;
 };
 
-// Fallback INMUTABLE y estable para evitar warnings y renders extra
-const EMPTY_MESSAGES: ReadonlyArray<ChatMessage> = Object.freeze([]) as ReadonlyArray<ChatMessage>;
+const EMPTY: ReadonlyArray<ChatMessage> = Object.freeze([]) as ReadonlyArray<ChatMessage>;
 
 export default function ChatPanel({ proyectoId, className = "" }: Props) {
   const usuario = useAuthStore((s) => s.usuario);
-  const email = usuario?.email ?? "";
+  const email = (usuario?.email ?? "").trim().toLowerCase();
   const proyecto = useTareasStore((s) => s.getProyectoPorId(email, proyectoId));
   const puedeVer = !!proyecto && (proyecto.usuarios ?? []).includes(email);
 
-  // ✅ En v5 usa UN SOLO argumento (selector). Seleccionamos el objeto threads entero (estable)
   const threads = useChatStore((s) => s.threads);
-  // Luego calculamos los mensajes con fallback constante (ya tipado):
-  const messages: ReadonlyArray<ChatMessage> = threads[proyectoId] ?? EMPTY_MESSAGES;
+  const messages: ReadonlyArray<ChatMessage> = threads[proyectoId] ?? EMPTY;
 
   const loadHistory = useChatStore((s) => s.loadHistory);
   const subscribeThread = useChatStore((s) => s.subscribeThread);
@@ -29,8 +27,6 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
 
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
-
-  // Evita doble init en StrictMode (React dev)
   const didInitRef = useRef(false);
 
   useEffect(() => {
@@ -38,11 +34,12 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
     if (didInitRef.current) return;
     didInitRef.current = true;
 
-    loadHistory?.(proyectoId);
-    const unsub = subscribeThread?.(proyectoId);
+    if (!proyectoId.startsWith("temp-")) {
+      void loadHistory(proyectoId);
+    }
+    const unsub = subscribeThread(proyectoId);
     return () => unsub?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [puedeVer, proyectoId]);
+  }, [puedeVer, proyectoId, loadHistory, subscribeThread]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -53,8 +50,7 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
   const handleSend = () => {
     const t = text.trim();
     if (!t || !email) return;
-    // El store ya hace optimismo + broadcast + persistencia
-    sendMessage?.(proyectoId, email, t);
+    void sendMessage(proyectoId, email, t);
     setText("");
   };
 
@@ -62,9 +58,7 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
     <div className={`mt-6 border rounded-xl overflow-hidden ${className}`}>
       <div className="px-4 py-2 bg-gray-50 border-b">
         <h3 className="font-semibold text-sm">Chat del proyecto</h3>
-        <p className="text-xs text-gray-500">
-          Participantes: {(proyecto?.usuarios ?? []).join(", ")}
-        </p>
+        <p className="text-xs text-gray-500">Participantes: {(proyecto?.usuarios ?? []).join(", ")}</p>
       </div>
 
       <div ref={listRef} className="h-64 overflow-y-auto p-3 space-y-2 bg-white">
@@ -73,8 +67,9 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow
-                ${mine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"}`}
+                className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow ${
+                  mine ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"
+                }`}
                 title={new Date(m.ts).toLocaleString()}
               >
                 {!mine && <div className="text-xs opacity-80 mb-1">{m.sender}</div>}
@@ -83,11 +78,8 @@ export default function ChatPanel({ proyectoId, className = "" }: Props) {
             </div>
           );
         })}
-
         {messages.length === 0 && (
-          <p className="text-center text-xs text-gray-500 mt-8">
-            Empieza la conversación ✨
-          </p>
+          <p className="text-center text-xs text-gray-500 mt-8">Empieza la conversación ✨</p>
         )}
       </div>
 

@@ -1,6 +1,4 @@
-// Cliente HTTP centralizado con endpoints tipados.
-// Mantiene los endpoints de demo (/api/health, /api/todos) y añade proyectos/tareas/chat.
-
+// src/services/api.ts
 import type { Proyecto } from "../types/proyecto";
 import type { Tarea } from "../types/tarea";
 import type { Estado } from "../types/estado";
@@ -11,7 +9,7 @@ import type {
   UpdateTareaDTO,
   MoveTareaDTO,
 } from "../types/api";
-import type { ChatMessage, ChatMessageInput } from "../types/chats";
+import type { ChatMessage } from "../types/chats";
 import type { Paginated } from "../types/common";
 
 export class ApiError extends Error {
@@ -29,7 +27,7 @@ function toQuery(params?: Record<string, unknown>): string {
   if (!params) return "";
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === null) continue;
+    if (v == null) continue;
     if (Array.isArray(v)) v.forEach((vv) => q.append(k, String(vv)));
     else q.append(k, String(v));
   }
@@ -43,12 +41,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
   const res = await fetch(`${base}${path}`, {
-    credentials: "include", // quita si no usas cookies/sesiones
+    credentials: "include",
     ...init,
     headers,
   });
 
-  // 204 No Content
   if (res.status === 204) return undefined as T;
 
   const ct = res.headers.get("content-type") || "";
@@ -61,28 +58,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
-// Helpers semánticos
 const http = {
-  get: <T>(path: string, params?: Record<string, unknown>) => request<T>(`${path}${toQuery(params)}`),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body: body == null ? undefined : JSON.stringify(body) }),
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PUT", body: body == null ? undefined : JSON.stringify(body) }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  get:   <T>(path: string, params?: Record<string, unknown>) => request<T>(`${path}${toQuery(params)}`),
+  post:  <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body == null ? undefined : JSON.stringify(body) }),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
+  delete:<T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
 export const api = {
-  /** -------------------- System / Demo -------------------- */
-  health: () => http.get<{ ok: boolean; ts: number; env?: string }>("/api/health"),
-
-  listTodos: () => http.get<Array<{ id: number; title: string; done: boolean }>>("/api/todos"),
-
-  createTodo: (title: string) =>
-    http.post<{ id: number; title: string; done: boolean }>("/api/todos", { title }),
-
-  /** -------------------- Proyectos -------------------- */
+  /** Proyectos */
   listProyectos: (params?: { q?: string; page?: number; pageSize?: number }) =>
     http.get<Paginated<Proyecto>>("/api/proyectos", params),
 
@@ -103,36 +87,31 @@ export const api = {
       `/api/proyectos/${encodeURIComponent(proyectoId)}/usuarios/${encodeURIComponent(usuario)}`
     ),
 
-  /** -------------------- Tareas -------------------- */
+  /** Tareas */
   createTarea: (proyectoId: string, estado: Estado, dto: CreateTareaDTO) =>
-    http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, {
-      ...dto,
-      estado,
-    }),
+    http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, { ...dto, estado }),
 
   updateTarea: (proyectoId: string, tareaId: string, dto: UpdateTareaDTO) =>
-    http.patch<Tarea>(
-      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`,
-      dto
-    ),
+    http.patch<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`, dto),
 
   moveTarea: (proyectoId: string, payload: MoveTareaDTO) =>
     http.post<Proyecto>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/move`, payload),
 
   deleteTarea: (proyectoId: string, tareaId: string) =>
-    http.delete<void>(
-      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`
-    ),
+    http.delete<void>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`),
 
-  /** -------------------- Chat -------------------- */
-  getChatHistory: (proyectoId: string, params?: { page?: number; pageSize?: number }) =>
-    http.get<Paginated<ChatMessage>>(
-      `/api/proyectos/${encodeURIComponent(proyectoId)}/chat`,
-      params
-    ),
+  /** Chat */
+  getChatHistory: async (proyectoId: string, params?: { page?: number; pageSize?: number }) => {
+    const res = await http.get<any>(`/api/proyectos/${encodeURIComponent(proyectoId)}/chat`, params);
+    if (Array.isArray(res)) return res as ChatMessage[];
+    if (Array.isArray(res?.items)) return res.items as ChatMessage[];
+    if (Array.isArray(res?.data)) return res.data as ChatMessage[];
+    return [] as ChatMessage[];
+  },
 
-  sendChatMessage: (input: ChatMessageInput) =>
-    http.post<ChatMessage>(`/api/proyectos/${encodeURIComponent(input.proyectoId)}/chat`, {
-      text: input.text,
+  sendChatMessage: (proyectoId: string, sender: string, text: string) =>
+    http.post<ChatMessage>(`/api/proyectos/${encodeURIComponent(proyectoId)}/chat`, {
+      sender,
+      text,
     }),
 };
