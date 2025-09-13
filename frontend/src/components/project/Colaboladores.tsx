@@ -10,8 +10,11 @@ export default function Colaboradores({ proyectoId }: Props) {
   const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
 
   const handleAgregar = () => {
-    if (!emailNuevo.trim()) return;
-    agregarColaborador(proyectoId, emailNuevo.trim());
+    const e = emailNuevo.trim().toLowerCase();
+    if (!e) return;
+    // opcional: validación simple de email
+    // if (!/^\S+@\S+\.\S+$/.test(e)) return;
+    agregarColaborador(proyectoId, e);
     setEmailNuevo("");
   };
 

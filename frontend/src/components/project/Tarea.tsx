@@ -134,7 +134,7 @@ export default function Tarea({
             type="date"
             value={deadline}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDeadline(e.target.value)}
-            max={proyectoDeadline ?? ""} /* <- ya no falla null vs undefined */
+            max={proyectoDeadline ?? ""}
             className="text-sm border border-gray-300 rounded px-2 py-1"
           />
           <input

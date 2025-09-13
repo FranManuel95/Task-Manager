@@ -1,4 +1,4 @@
-import { Estado, Prioridad } from "../../types"; 
+import { Estado, Prioridad } from "../../types";
 
 export const estados: Array<{ id: Estado; titulo: string }> = [
   { id: "por-hacer",   titulo: "Por hacer" },

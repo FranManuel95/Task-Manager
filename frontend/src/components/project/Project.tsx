@@ -11,8 +11,8 @@ import { createPortal } from "react-dom";
 
 import { useProyectoActual } from "../../hooks/useProyectoActual";
 import Columna from "./Columna";
-import { ordenPrioridad, estados } from "./constantes"; // asegúrate: estados: { id: Estado; titulo: string }[]
-import { Estado, Tarea, Prioridad } from "../../types"; // ← unificado
+import { ordenPrioridad, estados } from "./constantes";
+import { Estado, Tarea, Prioridad } from "../../types";
 import { useTareasStore } from "../../store/tareasStore";
 import ChatPanel from "./ChatPanel";
 
@@ -39,13 +39,9 @@ export default function Project() {
 
   const handleAgregar = () => {
     const email = emailNuevo.trim();
-    if (!email) return;
-    // opcional: validar formato
-    // if (!/^\S+@\S+\.\S+$/.test(email)) return alert("Email no válido");
-    if (proyectoId) {
-      agregarColaborador(proyectoId, email);
-      setEmailNuevo("");
-    }
+    if (!email || !proyectoId) return;
+    agregarColaborador(proyectoId, email);
+    setEmailNuevo("");
   };
 
   if (!proyecto) {
@@ -53,7 +49,6 @@ export default function Project() {
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    // dnd-kit: suele pasarse en data.current algo como { tarea, parent }
     setActiveTarea(event.active.data.current?.tarea ?? null);
   };
 
@@ -81,9 +76,7 @@ export default function Project() {
           type="text"
           placeholder="Buscar tareas..."
           value={searchTerm}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setSearchTerm(e.target.value)
-          }
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded"
         />
         <select
@@ -115,20 +108,15 @@ export default function Project() {
                     (filterPrioridad === "todas" || t.prioridad === filterPrioridad)
                 )
                 .sort((a, b) => {
-                  // 1) ordenar por prioridad
                   const aOrden = ordenPrioridad[a.prioridad];
                   const bOrden = ordenPrioridad[b.prioridad];
                   if (aOrden !== bOrden) return aOrden - bOrden;
 
-                  // 2) ordenar por deadline (las más próximas primero)
                   if (a.deadline && b.deadline) {
-                    return (
-                      new Date(a.deadline).getTime() -
-                      new Date(b.deadline).getTime()
-                    );
+                    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
                   }
-                  if (a.deadline) return -1; // a tiene fecha, va antes
-                  if (b.deadline) return 1;  // b tiene fecha, va antes
+                  if (a.deadline) return -1;
+                  if (b.deadline) return 1;
                   return 0;
                 });
 
@@ -161,8 +149,8 @@ export default function Project() {
         )}
       </DndContext>
 
-      {/* Invitar colaborador */}
-      <div className="mt-4">
+      {/* Invitar colaborador (inline) */}
+      <div className="mt-6">
         <h3 className="font-semibold text-sm mb-2">Invitar colaborador</h3>
         <div className="flex gap-2">
           <input
@@ -180,10 +168,12 @@ export default function Project() {
           </button>
         </div>
       </div>
-      {proyectoId && (
-  <ChatPanel proyectoId={proyectoId} />
-)}
 
+      {/* Chat del proyecto */}
+      {proyectoId && <ChatPanel proyectoId={proyectoId} />}
+
+      {/* (Opcional) componente dedicado de colaboradores */}
+      {/* <Colaboradores proyectoId={proyectoId!} /> */}
     </div>
   );
 }

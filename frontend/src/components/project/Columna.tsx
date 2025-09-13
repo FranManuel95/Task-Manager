@@ -4,7 +4,7 @@ import { AnimatePresence } from "motion/react";
 
 import Tarea from "./Tarea";
 import { columnaColors } from "./constantes";
-import { Estado, Tarea as TareaModel, Prioridad } from "../../types"; // o "@/types"
+import { Estado, Tarea as TareaModel, Prioridad } from "../../types";
 
 type Props = {
   id: Estado;

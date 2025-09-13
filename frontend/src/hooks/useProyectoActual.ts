@@ -1,13 +1,12 @@
 import { useParams } from "react-router-dom";
 import { useTareasStore } from "../store/tareasStore";
 import { useAuthStore } from "../store/authStore";
-import { Proyecto } from "../types"; // <- usa el modelo centralizado
+import type { Proyecto } from "../types";
 
 export function useProyectoActual() {
   const { id: proyectoId } = useParams<{ id: string }>();
   const email = useAuthStore((state) => state.usuario?.email || "");
 
-  // getProyectoPorId ya devuelve Proyecto | null si tu store está tipado con TareasStore
   const proyecto = useTareasStore((state) =>
     proyectoId ? state.getProyectoPorId(email, proyectoId) : null
   ) as Proyecto | null;
@@ -19,10 +18,10 @@ export function useProyectoActual() {
   const editarTarea  = useTareasStore((state) => state.editarTarea);
 
   // filtros
-  const searchTerm        = useTareasStore((state) => state.searchTerm);
-  const filterPrioridad   = useTareasStore((state) => state.filterPrioridad);
-  const setSearchTerm     = useTareasStore((state) => state.setSearchTerm);
-  const setFilterPrioridad= useTareasStore((state) => state.setFilterPrioridad);
+  const searchTerm          = useTareasStore((state) => state.searchTerm);
+  const filterPrioridad     = useTareasStore((state) => state.filterPrioridad);
+  const setSearchTerm       = useTareasStore((state) => state.setSearchTerm);
+  const setFilterPrioridad  = useTareasStore((state) => state.setFilterPrioridad);
 
   return {
     proyectoId,
@@ -31,7 +30,7 @@ export function useProyectoActual() {
     eliminarTarea,
     moverTarea,
     editarTarea,
-    proyectoDeadline: proyecto?.deadline ?? null, // <- string | null, consistente con Columna/Tarea
+    proyectoDeadline: proyecto?.deadline ?? null,
     searchTerm,
     filterPrioridad,
     setSearchTerm,

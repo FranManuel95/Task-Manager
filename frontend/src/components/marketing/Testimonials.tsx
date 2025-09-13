@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useId } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 type Testimonial = {
@@ -6,7 +6,7 @@ type Testimonial = {
   name: string;
   role: string;
   quote: string;
-  avatar: string; // ruta pública: p. ej. /images/cliente1.svg
+  avatar: string;
 };
 
 type Props = {
@@ -42,7 +42,6 @@ const DEFAULT_ITEMS: Testimonial[] = [
   },
 ];
 
-
 export default function Testimonials({
   items = DEFAULT_ITEMS,
   intervalMs = 6000,
@@ -51,23 +50,28 @@ export default function Testimonials({
   const [index, setIndex] = useState(0);
   const total = items.length;
   const timerRef = useRef<number | null>(null);
-  const regionId = useMemo(() => `carousel-${Math.random().toString(36).slice(2, 8)}`, []);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const regionId = useId();
 
   const goTo = (i: number) => setIndex((i + total) % total);
-  const next = () => goTo(index + 1);
-  const prev = () => goTo(index - 1);
+  const next = () => setIndex((i) => (i + 1) % total);
+  const prev = () => setIndex((i) => (i - 1 + total) % total);
 
-  // autoplay con pausa al hover/focus
-  const containerRef = useRef<HTMLDivElement>(null);
+  // autoplay con pausa al hover/focus (sin stale closures)
   useEffect(() => {
     const node = containerRef.current;
+
     const stop = () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      timerRef.current = null;
+      if (timerRef.current != null) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
     const start = () => {
-      if (timerRef.current) return;
-      timerRef.current = window.setInterval(next, intervalMs) as unknown as number;
+      if (timerRef.current != null) return;
+      timerRef.current = window.setInterval(() => {
+        setIndex((i) => (i + 1) % total);
+      }, intervalMs) as unknown as number;
     };
 
     start();
@@ -84,12 +88,12 @@ export default function Testimonials({
       node?.removeEventListener("focusin", stop);
       node?.removeEventListener("focusout", start);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [intervalMs, index, total]);
+  }, [intervalMs, total]);
 
   // swipe básico en móvil
   const touchStartX = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => (touchStartX.current = e.touches[0].clientX);
+  const onTouchStart = (e: React.TouchEvent) =>
+    (touchStartX.current = e.touches[0].clientX);
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current == null) return;
     const delta = e.changedTouches[0].clientX - touchStartX.current;
@@ -106,7 +110,10 @@ export default function Testimonials({
       aria-labelledby={`${regionId}-title`}
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <h2 id={`${regionId}-title`} className="text-3xl sm:text-4xl font-bold text-center">
+        <h2
+          id={`${regionId}-title`}
+          className="text-3xl sm:text-4xl font-bold text-center"
+        >
           Testimonios
         </h2>
         <p className="text-center mt-2 text-gray-600 dark:text-gray-300">
@@ -145,7 +152,9 @@ export default function Testimonials({
                 </blockquote>
                 <figcaption className="mt-4">
                   <div className="font-medium">{current.name}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">{current.role}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    {current.role}
+                  </div>
                 </figcaption>
               </motion.figure>
             </AnimatePresence>
@@ -185,7 +194,9 @@ export default function Testimonials({
                   aria-current={active ? "true" : undefined}
                   onClick={() => goTo(i)}
                   className={`h-2.5 rounded-full transition-all ${
-                    active ? "w-6 bg-blue-600" : "w-2.5 bg-gray-400/60 hover:bg-gray-500/80"
+                    active
+                      ? "w-6 bg-blue-600"
+                      : "w-2.5 bg-gray-400/60 hover:bg-gray-500/80"
                   }`}
                 />
               );
@@ -201,14 +212,26 @@ export default function Testimonials({
 function ChevronLeft() {
   return (
     <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
-      <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path
+        d="M15 6l-6 6 6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 function ChevronRight() {
   return (
     <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
-      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path
+        d="M9 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
