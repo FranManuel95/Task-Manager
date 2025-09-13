@@ -24,15 +24,11 @@ export default function Login() {
   };
 
   useEffect(() => {
-    if (usuario) {
-      navigate("/dashboard");
-    }
+    if (usuario) navigate("/dashboard");
   }, [usuario, navigate]);
 
   useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
+    if (error) toast.error(error);
   }, [error]);
 
   return (
@@ -47,10 +43,8 @@ export default function Login() {
           type="email"
           placeholder="Correo electrónico"
           value={email}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setEmail(e.target.value)
-          }
-          autoComplete="current-password"
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+          autoComplete="email"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 
@@ -58,9 +52,7 @@ export default function Login() {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setPassword(e.target.value)
-          }
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
           autoComplete="current-password"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />

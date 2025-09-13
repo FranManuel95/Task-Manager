@@ -18,15 +18,12 @@ export default function Register() {
   }, [clearError]);
 
   useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
+    if (error) toast.error(error);
   }, [error]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const success = register(email, password);
-
     if (success) {
       toast.success("Registro exitoso. Por favor inicia sesión.");
       navigate("/login");
@@ -55,7 +52,7 @@ export default function Register() {
           placeholder="Contraseña"
           value={password}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          autoComplete="current-password"
+          autoComplete="new-password"
           className="w-full border border-gray-300 px-3 py-2 rounded"
         />
 

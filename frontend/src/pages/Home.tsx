@@ -1,20 +1,11 @@
-// src/pages/Home.tsx
 import { motion } from "motion/react";
-import Testimonials from "../components/marketing/Testimonials";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
 import { useEffect } from "react";
+import { useAuthStore } from "../store/authStore";
+import Testimonials from "../components/marketing/Testimonials";
 
-type Feature = {
-  title: string;
-  desc: string;
-  icon: React.ReactNode;
-};
-
-type FAQ = {
-  q: string;
-  a: string;
-};
+type Feature = { title: string; desc: string; icon: React.ReactNode };
+type FAQ = { q: string; a: string };
 
 const features: Feature[] = [
   {
@@ -47,36 +38,23 @@ const features: Feature[] = [
 ];
 
 const faqs: FAQ[] = [
-  {
-    q: "¿Puedo invitar colaboradores?",
-    a: "Sí. Cualquier colaborador puede crear, editar, mover y eliminar tareas del proyecto.",
-  },
-  {
-    q: "¿Necesito backend para empezar?",
-    a: "No. Funciona local con persistencia y BroadcastChannel; podrás conectar backend cuando quieras.",
-  },
-  {
-    q: "¿Tiene atajos de teclado?",
-    a: "Sí: Enter para crear/guardar, Shift+Enter para saltos de línea, y más por venir.",
-  },
+  { q: "¿Puedo invitar colaboradores?", a: "Sí. Cualquier colaborador puede crear, editar, mover y eliminar tareas del proyecto." },
+  { q: "¿Necesito backend para empezar?", a: "No. Funciona local con persistencia y BroadcastChannel; podrás conectar backend cuando quieras." },
+  { q: "¿Tiene atajos de teclado?", a: "Sí: Enter para crear/guardar, Shift+Enter para saltos de línea, y más por venir." },
 ];
 
 export default function Home() {
-  
-    const usuario = useAuthStore((state) => state.usuario);
-    const navigate = useNavigate();
-    useEffect(() => {
-        if (usuario) {
-          navigate("/dashboard");
-        }
-      }, [usuario, navigate]);
+  const usuario = useAuthStore((s) => s.usuario);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (usuario) navigate("/dashboard");
+  }, [usuario, navigate]);
+
   return (
     <div className="relative min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      {/* Fondo con gradientes sutiles */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-      >
+      {/* Fondo */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full blur-3xl opacity-25 bg-gradient-to-tr from-blue-500 to-cyan-400" />
         <div className="absolute -bottom-24 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl opacity-20 bg-gradient-to-tr from-fuchsia-500 to-purple-400" />
       </div>
@@ -86,14 +64,13 @@ export default function Home() {
         <nav className="py-12 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/LogoTask-Manager2.png" alt="Logo" className="w-40 h-50" />
-       
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm">
             <a href="#features" className="hover:opacity-80">Características</a>
             <a href="#how" className="hover:opacity-80">Cómo funciona</a>
             <a href="#faq" className="hover:opacity-80">FAQ</a>
             <Link
-              to="/proyectos"
+              to="/dashboard"
               className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:scale-[1.02] active:scale-[0.99] transition"
             >
               Ir a la app
@@ -101,11 +78,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="md:hidden">
-            {/* botón móvil simple (no drawer para mantener 1 archivo) */}
-            <a
-              href="#features"
-              className="text-sm px-3 py-1 rounded-lg border border-black/10 dark:border-white/10"
-            >
+            <a href="#features" className="text-sm px-3 py-1 rounded-lg border border-black/10 dark:border-white/10">
               Menú
             </a>
           </div>
@@ -134,21 +107,14 @@ export default function Home() {
                 Un tablero Kanban rápido, colaborativo y sin fricciones. Crea tareas, colabora con tu equipo y mantén los deadlines bajo control.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                     <Link
-            to="/login"
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition"
-          >
-            Iniciar sesión
-          </Link>
-          <Link
-            to="/register"
-            className="border border-blue-600 text-blue-600 px-6 py-2 rounded hover:bg-blue-100 transition"
-          >
-            Registrarse
-          </Link>
+                <Link to="/login" className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
+                  Iniciar sesión
+                </Link>
+                <Link to="/register" className="border border-blue-600 text-blue-600 px-6 py-2 rounded hover:bg-blue-100 transition">
+                  Registrarse
+                </Link>
               </div>
 
-              {/* Trust bar */}
               <div className="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-4 opacity-80">
                 <LogoBadge text="React + TS" />
                 <LogoBadge text="Tailwind" />
@@ -157,7 +123,6 @@ export default function Home() {
               </div>
             </motion.div>
 
-            {/* Mockup simple */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -167,7 +132,7 @@ export default function Home() {
             >
               <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-gray-900/60 backdrop-blur p-3 shadow-2xl">
                 <img
-                  src="/public/CapturaProyectoTareas.png"
+                  src="/CapturaProyectoTareas.png"
                   alt="Vista previa del tablero Kanban"
                   className="rounded-xl w-full object-cover"
                 />
@@ -182,11 +147,7 @@ export default function Home() {
         {/* Features */}
         <section id="features" className="border-t border-black/5 dark:border-white/10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-            <SectionHeading
-              kicker="Características"
-              title="Todo lo que necesitas para ejecutar"
-              subtitle="Sin configuraciones complejas ni distracciones."
-            />
+            <SectionHeading kicker="Características" title="Todo lo que necesitas para ejecutar" subtitle="Sin configuraciones complejas ni distracciones." />
             <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.map((f, i) => (
                 <motion.div
@@ -211,21 +172,14 @@ export default function Home() {
         {/* How it works */}
         <section id="how" className="border-t border-black/5 dark:border-white/10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-            <SectionHeading
-              kicker="Cómo funciona"
-              title="De cero a flujo en minutos"
-              subtitle="Crea un proyecto, invita a tu equipo y empieza a mover tareas."
-            />
+            <SectionHeading kicker="Cómo funciona" title="De cero a flujo en minutos" subtitle="Crea un proyecto, invita a tu equipo y empieza a mover tareas." />
             <ol className="mt-10 grid md:grid-cols-3 gap-6 counter-steps">
               {[
                 { t: "Crea tu proyecto", d: "Define nombre, color y deadline opcional." },
                 { t: "Invita a tu equipo", d: "Comparte el proyecto y chatead dentro." },
                 { t: "Planifica y ejecuta", d: "Agrega tareas, define prioridades y cumple fechas." },
               ].map((s, i) => (
-                <li
-                  key={s.t}
-                  className="relative rounded-xl border border-black/10 dark:border-white/10 p-6 bg-white/60 dark:bg-gray-900/60"
-                >
+                <li key={s.t} className="relative rounded-xl border border-black/10 dark:border-white/10 p-6 bg-white/60 dark:bg-gray-900/60">
                   <span className="step-index absolute -top-3 -left-3 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold">
                     {i + 1}
                   </span>
@@ -237,19 +191,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials */}
         <Testimonials className="border-t border-black/5 dark:border-white/10" />
 
         {/* FAQ */}
         <section id="faq" className="border-t border-black/5 dark:border-white/10">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-16">
-            <SectionHeading
-              kicker="FAQ"
-              title="Preguntas frecuentes"
-              subtitle="Las dudas típicas, resueltas."
-            />
+            <SectionHeading kicker="FAQ" title="Preguntas frecuentes" subtitle="Las dudas típicas, resueltas." />
             <div className="mt-10 divide-y divide-black/10 dark:divide-white/10 rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
-              {faqs.map((f, i) => (
+              {faqs.map((f) => (
                 <details key={f.q} className="group open:bg-black/[0.02] dark:open:bg-white/[0.03]">
                   <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between">
                     <span className="font-medium">{f.q}</span>
@@ -270,10 +219,7 @@ export default function Home() {
               Crea un proyecto en segundos y empieza a entregar con foco.
             </p>
             <div className="mt-8 flex gap-3 justify-center">
-              <Link
-                to="/proyectos/nuevo"
-                className="inline-flex rounded-xl px-5 py-3 bg-blue-600 text-white hover:bg-blue-700 transition shadow"
-              >
+              <Link to="/dashboard" className="inline-flex rounded-xl px-5 py-3 bg-blue-600 text-white hover:bg-blue-700 transition shadow">
                 Crear proyecto
               </Link>
             </div>
@@ -297,24 +243,12 @@ export default function Home() {
 }
 
 /* ---------------- small atoms ---------------- */
-function SectionHeading({
-  kicker,
-  title,
-  subtitle,
-}: {
-  kicker: string;
-  title: string;
-  subtitle?: string;
-}) {
+function SectionHeading({ kicker, title, subtitle }: { kicker: string; title: string; subtitle?: string }) {
   return (
     <div className="text-center max-w-3xl mx-auto">
-      <span className="text-xs uppercase tracking-widest text-blue-600 dark:text-blue-400">
-        {kicker}
-      </span>
+      <span className="text-xs uppercase tracking-widest text-blue-600 dark:text-blue-400">{kicker}</span>
       <h2 className="mt-2 text-3xl sm:text-4xl font-bold">{title}</h2>
-      {subtitle && (
-        <p className="mt-3 text-gray-600 dark:text-gray-300">{subtitle}</p>
-      )}
+      {subtitle && <p className="mt-3 text-gray-600 dark:text-gray-300">{subtitle}</p>}
     </div>
   );
 }
@@ -335,5 +269,3 @@ function LogoBadge({ text }: { text: string }) {
     </div>
   );
 }
-
-

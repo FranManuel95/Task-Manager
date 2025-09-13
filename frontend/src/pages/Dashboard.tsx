@@ -1,51 +1,45 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { useTareasStore } from "../store/tareasStore";
 import { parseISO, differenceInDays, isBefore } from "date-fns";
+
+import { useTareasStore } from "../store/tareasStore";
 import { useAuthStore } from "../store/authStore";
+
 import ModalCrearProyecto from "../components/modals/ModalCrearProyecto";
 import ModalEditarProyecto from "../components/modals/ModalEditarProyecto";
 import ModalEliminarProyecto from "../components/modals/ModalEliminarProyecto";
 
-type ProyectoType = {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  color: string;
-  deadline?: string | null;
-  tareas: {
-    [key: string]: Array<{
-      id: string;
-      titulo: string;
-      completado?: boolean;
-    }>;
-  };
-};
+import type { Proyecto } from "../types/proyecto";
+import type { Estado } from "../types/estado";
+
+// Para el selector de orden
+type Orden = "recientes" | "antiguos" | "alfabetico" | "progreso";
 
 export default function Dashboard() {
   const email = useAuthStore((state) => state.usuario?.email || "");
-  const usuario = useAuthStore((state) => state.usuario);
-  
   const setUsuarioActual = useTareasStore((state) => state.setUsuarioActual);
   const getProyectosPorUsuario = useTareasStore((state) => state.getProyectosPorUsuario);
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
   const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
 
-  const proyectos = getProyectosPorUsuario(email) as Record<string, ProyectoType>;
+  // Proyectos del usuario (mapa id -> Proyecto)
+  const proyectos = getProyectosPorUsuario(email) as Record<string, Proyecto>;
 
   useEffect(() => {
     if (email) setUsuarioActual(email);
   }, [email, setUsuarioActual]);
 
   const [busqueda, setBusqueda] = useState("");
-  const [orden, setOrden] = useState("recientes");
+  const [orden, setOrden] = useState<Orden>("recientes");
+
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevaDescripcion, setNuevaDescripcion] = useState("");
   const [nuevoColor, setNuevoColor] = useState("#3B82F6");
   const [nuevoDeadline, setNuevoDeadline] = useState("");
-  const [proyectoAEditar, setProyectoAEditar] = useState<ProyectoType | null>(null);
+
+  const [proyectoAEditar, setProyectoAEditar] = useState<Proyecto | null>(null);
   const [proyectoAEliminar, setProyectoAEliminar] = useState<string | null>(null);
 
   const proyectosFiltrados = Object.values(proyectos)
@@ -55,19 +49,37 @@ export default function Dashboard() {
       const totalB = Object.values(b.tareas).flat().length;
       const compA = a.tareas["completado"]?.length || 0;
       const compB = b.tareas["completado"]?.length || 0;
+
+      const aNum = Number(a.id);
+      const bNum = Number(b.id);
+      const aIsNum = !Number.isNaN(aNum);
+      const bIsNum = !Number.isNaN(bNum);
+
       switch (orden) {
-        case "recientes": return parseInt(b.id) - parseInt(a.id);
-        case "antiguos": return parseInt(a.id) - parseInt(b.id);
-        case "alfabetico": return a.nombre.localeCompare(b.nombre);
-        case "progreso": return (compB / totalB || 0) - (compA / totalA || 0);
-        default: return 0;
+        case "recientes":
+          // Si ambos son numéricos (p.ej. Date.now()), ordena desc; si no, conserva
+          return aIsNum && bIsNum ? bNum - aNum : 0;
+        case "antiguos":
+          return aIsNum && bIsNum ? aNum - bNum : 0;
+        case "alfabetico":
+          return a.nombre.localeCompare(b.nombre);
+        case "progreso":
+          return (compB / (totalB || 1)) - (compA / (totalA || 1));
+        default:
+          return 0;
       }
     });
 
   const handleCrearProyecto = (e: FormEvent) => {
     e.preventDefault();
     if (!nuevoNombre.trim()) return;
-    agregarProyecto(email, nuevoNombre.trim(), nuevaDescripcion.trim(), nuevoColor, nuevoDeadline || null);
+    agregarProyecto(
+      email,
+      nuevoNombre.trim(),
+      nuevaDescripcion.trim(),
+      nuevoColor,
+      nuevoDeadline || null
+    );
     setNuevoNombre("");
     setNuevaDescripcion("");
     setNuevoColor("#3B82F6");
@@ -78,7 +90,13 @@ export default function Dashboard() {
   const handleEditarProyecto = (e: FormEvent) => {
     e.preventDefault();
     if (!proyectoAEditar) return;
-    editarProyecto(proyectoAEditar.id, nuevoNombre, nuevaDescripcion, nuevoColor, nuevoDeadline || null);
+    editarProyecto(
+      proyectoAEditar.id,
+      nuevoNombre,
+      nuevaDescripcion,
+      nuevoColor,
+      nuevoDeadline || null
+    );
     setProyectoAEditar(null);
   };
 
@@ -98,8 +116,9 @@ export default function Dashboard() {
           onClick={() => setMostrarModal(true)}
           className="flex items-center justify-center p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text font-semibold"
         >
-           Nuevo Proyecto
+          Nuevo Proyecto
         </button>
+
         <input
           type="text"
           value={busqueda}
@@ -107,9 +126,10 @@ export default function Dashboard() {
           placeholder="Buscar proyectos..."
           className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded"
         />
+
         <select
           value={orden}
-          onChange={(e: ChangeEvent<HTMLSelectElement>) => setOrden(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setOrden(e.target.value as Orden)}
           className="w-full sm:w-1/4 px-3 py-2 border border-gray-300 rounded"
         >
           <option value="recientes">Más recientes</option>
@@ -119,20 +139,19 @@ export default function Dashboard() {
         </select>
       </div>
 
-      {/* === REEMPLAZO: Grid -> Tabla responsiva === */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
         {proyectosFiltrados.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-200">
             <caption className="sr-only">Listado de proyectos</caption>
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proyecto</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progreso</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tareas</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Deadline</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Color</th>
-                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proyecto</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progreso</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tareas</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Deadline</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Color</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -151,7 +170,6 @@ export default function Dashboard() {
 
                 return (
                   <tr key={proyecto.id} className="hover:bg-gray-50">
-                    {/* Proyecto con Link al detalle (mantiene la navegación) */}
                     <td className="px-4 py-3 align-top whitespace-nowrap">
                       <Link
                         to={`/proyecto/${proyecto.id}`}
@@ -162,10 +180,10 @@ export default function Dashboard() {
                       </Link>
                     </td>
 
-                    {/* Descripción */}
-                    <td className="px-4 py-3 align-top text-sm text-gray-600 max-w-[40ch] truncate">{proyecto.descripcion}</td>
+                    <td className="px-4 py-3 align-top text-sm text-gray-600 max-w-[40ch] truncate">
+                      {proyecto.descripcion}
+                    </td>
 
-                    {/* Progreso con barra + porcentaje */}
                     <td className="px-4 py-3 align-top w-56">
                       <div className="w-full bg-gray-200 h-2 rounded">
                         <div
@@ -180,15 +198,14 @@ export default function Dashboard() {
                       <div className="mt-1 text-xs text-gray-600">{progreso}%</div>
                     </td>
 
-                    {/* Tareas completadas / total */}
-                    <td className="px-4 py-3 align-top text-sm text-gray-700 whitespace-nowrap">{done}/{total}</td>
+                    <td className="px-4 py-3 align-top text-sm text-gray-700 whitespace-nowrap">
+                      {done}/{total}
+                    </td>
 
-                    {/* Deadline con mismo esquema de colores */}
                     <td className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}>
                       {proyecto.deadline ? `📅 ${proyecto.deadline}` : "—"}
                     </td>
 
-                    {/* Color en columna dedicada (swatch + hex) */}
                     <td className="px-4 py-3 align-top">
                       <div className="flex items-center gap-2">
                         <span
@@ -201,7 +218,6 @@ export default function Dashboard() {
                       </div>
                     </td>
 
-                    {/* Acciones Editar / Eliminar (mismas funciones) */}
                     <td className="px-4 py-3 align-top">
                       <div className="flex justify-end gap-3">
                         <button
@@ -238,7 +254,9 @@ export default function Dashboard() {
             </tbody>
           </table>
         ) : (
-          <div className="p-6 text-center text-gray-500">No se encontraron proyectos. ¡Crea uno para comenzar!</div>
+          <div className="p-6 text-center text-gray-500">
+            No se encontraron proyectos. ¡Crea uno para comenzar!
+          </div>
         )}
       </div>
 
