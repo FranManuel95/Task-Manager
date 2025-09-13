@@ -1,6 +1,6 @@
 // src/store/proyectos.actions.ts
 import { TareasStore } from "./tareas.types";
-import { Proyecto } from "@/types";
+import { Proyecto } from "../types";
 import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 
 export const createProyectoActions = (set: any, get: () => TareasStore) => ({

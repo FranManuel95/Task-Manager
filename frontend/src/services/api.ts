@@ -1,25 +1,34 @@
-export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init);
-  if (!res.ok) throw new Error(`[GET ${path}] ${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
+// frontend/src/services/api.ts
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
-async function send<T>(
-  path: string,
-  method: 'POST' | 'PATCH' | 'DELETE',
-  body?: unknown,
-  init?: RequestInit
-): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+const isProd = import.meta.env.MODE === "production";
+const base = isProd && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : "";
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${base}${path}`, {
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    // Si NO usas cookies/sesiones, quita la línea de abajo:
+    credentials: "include",
     ...init,
   });
-  if (!res.ok) throw new Error(`[${method} ${path}] ${res.status} ${res.statusText}`);
-  return (method === 'DELETE' ? (undefined as unknown as T) : (res.json() as Promise<T>));
+  const isJson = res.headers.get("content-type")?.includes("application/json");
+  const body = isJson ? await res.json() : await res.text();
+  if (!res.ok) throw new ApiError(typeof body === "string" ? body : JSON.stringify(body), res.status);
+  return body as T;
 }
 
-export const apiPost  =  <T>(path: string, body: unknown, init?: RequestInit) => send<T>(path, 'POST',  body,  init);
-export const apiPatch =  <T>(path: string, body: unknown, init?: RequestInit) => send<T>(path, 'PATCH', body,  init);
-export const apiDelete =    (path: string,                      init?: RequestInit) => send<void>(path, 'DELETE',undefined,init);
+export const api = {
+  health: () => request<{ ok: boolean; ts: number; env?: string }>("/api/health"),
+  listTodos: () => request<Array<{ id: number; title: string; done: boolean }>>("/api/todos"),
+  createTodo: (title: string) =>
+    request<{ id: number; title: string; done: boolean }>("/api/todos", {
+      method: "POST",
+      body: JSON.stringify({ title }),
+    }),
+};
