@@ -92,13 +92,30 @@ export const api = {
     http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, { ...dto, estado }),
 
   updateTarea: (proyectoId: string, tareaId: string, dto: UpdateTareaDTO) =>
-    http.patch<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`, dto),
+    http.patch<Tarea>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`,
+      dto
+    ),
 
-  moveTarea: (proyectoId: string, payload: MoveTareaDTO) =>
-    http.post<Proyecto>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/move`, payload),
+  // 🔁 Mapeamos a lo que tu backend espera: destino (+ origen por si lo valida)
+  moveTarea: (proyectoId: string, payload: MoveTareaDTO) => {
+    const body: Record<string, unknown> = {
+      tareaId: payload.tareaId,
+      destino: payload.to,      // 👈 antes mandábamos "to"
+    };
+    if (payload.from) body.origen = payload.from; // opcional si el backend lo requiere
+    if (typeof payload.index === "number") body.index = payload.index;
+
+    return http.post<Proyecto>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/move`,
+      body
+    );
+  },
 
   deleteTarea: (proyectoId: string, tareaId: string) =>
-    http.delete<void>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`),
+    http.delete<void>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`
+    ),
 
   /** Chat */
   getChatHistory: async (proyectoId: string, params?: { page?: number; pageSize?: number }) => {
