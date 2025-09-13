@@ -3,6 +3,7 @@ import { TareasStore } from "./tareas.types";
 import { Prioridad, Tarea, Estado } from "../types";
 import { validateTareaDeadline } from "./tareas.helpers";
 import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
+import { api } from "../services/api";
 
 export const createTareaActions = (set: any, get: () => TareasStore) => ({
   agregarTarea: (
@@ -22,8 +23,9 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
 
     if (!validateTareaDeadline(deadline, proyecto.deadline)) return;
 
+    const tempId = `temp-${Date.now()}`;
     const nuevaTarea: Tarea = {
-      id: Date.now().toString(),
+      id: tempId,
       titulo,
       descripcion: "",
       prioridad: "media",
@@ -31,6 +33,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
       etiquetas: [],
     };
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -46,6 +49,50 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend
+    void (async () => {
+      try {
+        const created = await api.createTarea(proyectoId, estado, {
+          titulo,
+          descripcion: "",
+          prioridad: "media",
+          deadline: deadline ?? null,
+          etiquetas: [],
+        });
+
+        // Reemplazar tempId por id real
+        set((state: TareasStore) => {
+          const loc2 = locateProyecto(state, proyectoId);
+          if (!loc2) return state;
+
+          const { ownerEmail: owner2, proyecto: p2 } = loc2;
+
+          const reemplazar = (col: Tarea[]) =>
+            col.map((t) => (t.id === tempId ? { ...created } : t));
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [owner2]: {
+                ...state.proyectos[owner2],
+                [proyectoId]: {
+                  ...p2,
+                  tareas: {
+                    ...p2.tareas,
+                    "por-hacer": reemplazar(p2.tareas["por-hacer"]),
+                    "en-progreso": reemplazar(p2.tareas["en-progreso"]),
+                    "completado": reemplazar(p2.tareas["completado"]),
+                  },
+                },
+              },
+            },
+          };
+        });
+      } catch (err) {
+        console.warn("createTarea falló, se mantiene estado local:", err);
+      }
+    })();
   },
 
   editarTarea: (
@@ -82,6 +129,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
         : t
     );
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -97,6 +145,21 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend
+    void (async () => {
+      try {
+        await api.updateTarea(proyectoId, tareaId, {
+          titulo: nuevoTitulo,
+          descripcion: nuevaDescripcion,
+          prioridad,
+          deadline: deadline ?? null,
+          etiquetas,
+        });
+      } catch (err) {
+        console.warn("updateTarea falló, se mantiene estado local:", err);
+      }
+    })();
   },
 
   eliminarTarea: (proyectoId: string, estado: Estado, id: string): void => {
@@ -111,6 +174,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
 
     const nuevasTareasColumna = proyecto.tareas[estado].filter((t) => t.id !== id);
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -126,6 +190,15 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend
+    void (async () => {
+      try {
+        await api.deleteTarea(proyectoId, id);
+      } catch (err) {
+        console.warn("deleteTarea falló:", err);
+      }
+    })();
   },
 
   moverTarea: (proyectoId: string, tareaId: string, destino: Estado): void => {
@@ -162,6 +235,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
       nuevasTareas[destino] = [...nuevasTareas[destino], tareaMovida];
     }
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -174,5 +248,35 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend (si tu API devuelve el proyecto actualizado, lo aplicamos)
+    void (async () => {
+      try {
+        const updatedProyecto = await api.moveTarea(proyectoId, {
+          tareaId,
+          from:
+            (["por-hacer", "en-progreso", "completado"] as Estado[]).find((k) =>
+              proyecto.tareas[k].some((t) => t.id === tareaId)
+            ) ?? "por-hacer",
+          to: destino,
+        });
+        set((state: TareasStore) => {
+          const loc2 = locateProyecto(state, proyectoId);
+          if (!loc2) return state;
+          const { ownerEmail: ow2 } = loc2;
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [ow2]: {
+                ...state.proyectos[ow2],
+                [proyectoId]: updatedProyecto,
+              },
+            },
+          };
+        });
+      } catch (err) {
+        console.warn("moveTarea falló, se mantiene estado local:", err);
+      }
+    })();
   },
 });

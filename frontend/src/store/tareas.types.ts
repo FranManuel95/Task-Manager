@@ -52,20 +52,9 @@ export interface TareasStore {
     etiquetas: string[]
   ) => void;
 
-  eliminarTarea: (
-    proyectoId: string,
-    estado: Estado,
-    id: string
-  ) => void;
+  eliminarTarea: (proyectoId: string, estado: Estado, id: string) => void;
 
-  moverTarea: (
-    proyectoId: string,
-    tareaId: string,
-    destino: Estado
-  ) => void;
+  moverTarea: (proyectoId: string, tareaId: string, destino: Estado) => void;
 
-  agregarColaborador: (
-    proyectoId: string,
-    nuevoEmail: string
-  ) => void;
+  agregarColaborador: (proyectoId: string, nuevoEmail: string) => void;
 }

@@ -1,6 +1,7 @@
 // src/store/colaboradores.actions.ts
 import { TareasStore } from "./tareas.types";
 import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
+import { api } from "../services/api";
 
 export const createColaboradorActions = (set: any, get: () => TareasStore) => ({
   agregarColaborador: (proyectoId: string, nuevoEmail: string): void => {
@@ -21,6 +22,7 @@ export const createColaboradorActions = (set: any, get: () => TareasStore) => ({
     // Evita duplicados
     if (proyecto.usuarios.includes(emailLimpio)) return;
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -33,5 +35,14 @@ export const createColaboradorActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend
+    void (async () => {
+      try {
+        await api.addUsuarioAProyecto(proyectoId, emailLimpio);
+      } catch (err) {
+        console.warn("addUsuarioAProyecto falló, se mantiene estado local:", err);
+      }
+    })();
   },
 });

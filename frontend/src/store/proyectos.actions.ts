@@ -2,6 +2,7 @@
 import { TareasStore } from "./tareas.types";
 import { Proyecto } from "../types";
 import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
+import { api } from "../services/api";
 
 export const createProyectoActions = (set: any, get: () => TareasStore) => ({
   // Devuelve los proyectos en los que el usuario participa (owner o colaborador)
@@ -38,7 +39,7 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     return null;
   },
 
-  // Crea un proyecto nuevo bajo el "bucket" del email pasado
+  // Crea un proyecto nuevo (optimista + persistencia en backend)
   agregarProyecto: (
     email: string,
     nombre: string,
@@ -48,14 +49,15 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
   ): void => {
     const emailLower = (email ?? "").trim().toLowerCase();
 
+    const tempId = `temp-${Date.now()}`;
     const nuevoProyecto: Proyecto = {
-      id: Date.now().toString(),
+      id: tempId,
       nombre,
       descripcion: descripcion ?? "",
       color: color ?? "#3B82F6",
       deadline: deadline ?? null,
       creadoPor: emailLower,
-      usuarios: [emailLower], // el owner entra como primer colaborador
+      usuarios: [emailLower],
       tareas: {
         "por-hacer": [],
         "en-progreso": [],
@@ -64,17 +66,52 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     };
 
     const proyectosActuales = get().proyectos[email] || {};
-    const nuevosProyectosUsuario = {
-      ...proyectosActuales,
-      [nuevoProyecto.id]: nuevoProyecto,
-    };
+    const nuevosProyectosUsuario = { ...proyectosActuales, [nuevoProyecto.id]: nuevoProyecto };
 
+    // Optimista
     set({
       proyectos: {
         ...get().proyectos,
-        [email]: nuevosProyectosUsuario, // mantenemos la clave tal cual vino `email`
+        [email]: nuevosProyectosUsuario,
       },
     });
+
+    // Llamada real (no devolvemos Promise para no romper la firma)
+    void (async () => {
+      try {
+        const created = await api.createProyecto({
+          nombre: nuevoProyecto.nombre,
+          descripcion: nuevoProyecto.descripcion,
+          color: nuevoProyecto.color,
+          deadline: nuevoProyecto.deadline ?? undefined,
+          usuarios: nuevoProyecto.usuarios,
+        });
+
+        // Reemplazar tempId por el id real
+        const ownerKey = created.creadoPor || email;
+        set((state: TareasStore) => {
+          const byOwner = state.proyectos[ownerKey] || {};
+          const entries = Object.entries(byOwner);
+          const mapped = Object.fromEntries(
+            entries.map(([id, p]) => (id === tempId ? [created.id, { ...created, tareas: p.tareas }] : [id, p]))
+          );
+
+          // Si el ownerKey no existía, nos aseguramos de colocar el proyecto
+          if (!byOwner[tempId]) {
+            mapped[created.id] = created;
+          }
+
+          return {
+            proyectos: {
+              ...state.proyectos,
+              [ownerKey]: mapped,
+            },
+          };
+        });
+      } catch (err) {
+        console.warn("createProyecto (backend) falló, manteniendo local:", err);
+      }
+    })();
   },
 
   // Edita un proyecto si el usuario actual es colaborador (o owner)
@@ -97,15 +134,14 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
       for (const col of Object.values(proyecto.tareas)) {
         for (const t of col) {
           if (t.deadline && new Date(t.deadline) > new Date(deadline)) {
-            alert(
-              "El proyecto tiene tareas con fecha posterior a la nueva fecha límite."
-            );
+            alert("El proyecto tiene tareas con fecha posterior a la nueva fecha límite.");
             return;
           }
         }
       }
     }
 
+    // Optimista
     set((state: TareasStore) => ({
       proyectos: {
         ...state.proyectos,
@@ -115,6 +151,15 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
         },
       },
     }));
+
+    // Backend
+    void (async () => {
+      try {
+        await api.updateProyecto(id, { nombre, descripcion, color, deadline: deadline ?? null });
+      } catch (err) {
+        console.warn("updateProyecto (backend) falló, se mantiene estado local:", err);
+      }
+    })();
   },
 
   // Elimina un proyecto si el usuario actual es colaborador (o owner)
@@ -123,13 +168,21 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     const loc = locateProyecto(get(), id);
     if (!loc) return;
 
-    const { ownerEmail, proyecto } = loc;
-    if (!canEditProyecto(email, proyecto)) return;
-
+    const { ownerEmail } = loc;
+    // Optimista
     set((state: TareasStore) => {
       const nuevos = { ...state.proyectos[ownerEmail] };
       delete nuevos[id];
       return { proyectos: { ...state.proyectos, [ownerEmail]: nuevos } };
     });
+
+    // Backend
+    void (async () => {
+      try {
+        await api.deleteProyecto(id);
+      } catch (err) {
+        console.warn("deleteProyecto (backend) falló:", err);
+      }
+    })();
   },
 });
