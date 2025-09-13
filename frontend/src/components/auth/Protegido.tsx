@@ -5,7 +5,8 @@ export default function Protegido() {
   const usuario = useAuthStore((state) => state.usuario);
   const logout = useAuthStore((state) => state.logout);
 
-  if (!usuario) return <Navigate to="/login" replace />;
+  // Si no hay sesión, envía al Home
+  if (!usuario) return <Navigate to="/" replace />;
 
   return (
     <div>
