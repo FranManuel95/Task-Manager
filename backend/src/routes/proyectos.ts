@@ -1,240 +1,568 @@
-// backend/src/routes/proyectos.ts
-import { Router } from 'express';
-import { prisma } from '../db';
-import { EstadoMap, mapProyecto, mapTarea } from '../mappers';
+import { Router } from "express";
+import type { Request, Response, NextFunction } from "express";
+import { db } from "../db";
+import { $Enums, Prisma } from "@prisma/client";
 
-const r = Router();
+const router = Router();
 
-/** GET /api/proyectos/:id */
-r.get('/:id', async (req, res, next) => {
+/* ---------------- Utilidades ---------------- */
+
+type FrontEstado = "por-hacer" | "en-progreso" | "completado";
+type DbEstado = $Enums.Estado;
+type DbPrioridad = $Enums.Prioridad;
+
+function toDbEstadoFlexible(value: unknown): DbEstado | null {
+  const s = String(value ?? "").trim().toLowerCase();
+  const map: Record<string, DbEstado> = {
+    "por-hacer": "por_hacer",
+    "por_hacer": "por_hacer",
+    "en-progreso": "en_progreso",
+    "en_progreso": "en_progreso",
+    "completado": "completado",
+  };
+  return map[s] ?? null;
+}
+
+function toDbPrioridadFlexible(value: unknown): DbPrioridad {
+  const s = String(value ?? "").trim().toLowerCase();
+  return (["baja", "media", "alta"] as const).includes(s as DbPrioridad)
+    ? (s as DbPrioridad)
+    : "media";
+}
+
+function parseDeadline(d: unknown): Date | null {
+  if (!d) return null;
+  const dt = new Date(String(d));
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+/* ---------------- Proyectos ---------------- */
+
+// Lista (ligera)
+router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const proyectos = await db.proyecto.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        color: true,
+        deadline: true,
+        creadoPor: true,
+        usuarios: true, // string[]
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const items = proyectos.map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion ?? "",
+      color: p.color,
+      deadline: p.deadline ? p.deadline.toISOString() : null,
+      creadoPor: p.creadoPor,
+      usuarios: p.usuarios, // string[]
+      tareas: { "por-hacer": [], "en-progreso": [], "completado": [] },
+    }));
+
+    res.json({ items, total: items.length, page: 1, pageSize: items.length });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Detalle
+router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
 
-    const proyecto = await prisma.proyecto.findUnique({
+    const p = await db.proyecto.findUnique({
       where: { id },
-      include: {
-        tareas: { orderBy: { createdAt: 'asc' } },
-        usuarios: true,
-      },
-    });
-
-    if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado' });
-    return res.json(mapProyecto(proyecto));
-  } catch (e) { next(e); }
-});
-
-/** POST /api/proyectos */
-r.post('/', async (req, res, next) => {
-  try {
-    const { nombre, descripcion, color, deadline, usuarios = [] } = req.body as {
-      nombre: string; descripcion?: string; color?: string; deadline?: string | null; usuarios?: string[];
-    };
-
-    // por simplicidad, creadoPor = primer usuario si llega, si no "anon"
-    const creador = (usuarios[0] ?? 'anon').toLowerCase();
-
-    const created = await prisma.proyecto.create({
-      data: {
-        nombre,
-        descripcion: descripcion ?? '',
-        color: color ?? '#3B82F6',
-        deadline: deadline ? new Date(deadline) : null,
-        creadoPor: creador,
-        usuarios: {
-          create: (usuarios ?? []).map(email => ({ email: email.toLowerCase() })),
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        color: true,
+        deadline: true,
+        creadoPor: true,
+        usuarios: true, // string[]
+        tareas: {
+          select: {
+            id: true,
+            titulo: true,
+            descripcion: true,
+            prioridad: true,
+            deadline: true,
+            etiquetas: true,
+            estado: true,
+          },
         },
       },
-      include: {
-        tareas: true,
+    });
+
+    if (!p) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    const tareas = {
+      "por-hacer": [] as any[],
+      "en-progreso": [] as any[],
+      "completado": [] as any[],
+    };
+
+    for (const t of p.tareas) {
+      const front: FrontEstado =
+        t.estado === "por_hacer"
+          ? "por-hacer"
+          : t.estado === "en_progreso"
+          ? "en-progreso"
+          : "completado";
+
+      tareas[front].push({
+        id: t.id,
+        titulo: t.titulo,
+        descripcion: t.descripcion ?? "",
+        prioridad: t.prioridad,
+        deadline: t.deadline ? t.deadline.toISOString() : null,
+        etiquetas: t.etiquetas ?? [],
+      });
+    }
+
+    res.json({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion ?? "",
+      color: p.color,
+      deadline: p.deadline ? p.deadline.toISOString() : null,
+      creadoPor: p.creadoPor,
+      usuarios: p.usuarios, // string[]
+      tareas,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Crear  ⬅️ usamos { set: [...] } y garantizamos al menos creadoPor
+router.post("/", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = req.body ?? {};
+    const nombre = String(body.nombre ?? "").trim();
+    const descripcion = String(body.descripcion ?? "");
+    const color = String(body.color ?? "#3B82F6").trim();
+    const deadline = parseDeadline(body.deadline);
+    const usuariosArr = Array.isArray(body.usuarios) ? (body.usuarios as unknown[]) : [];
+
+    if (!nombre || !color) {
+      return res.status(400).json({ error: "nombre y color son requeridos" });
+    }
+
+    const usuarios: string[] = usuariosArr
+      .map((u) => String(u || "").trim().toLowerCase())
+      .filter(Boolean);
+
+    const creadoPor = (String(body.creadoPor ?? usuarios[0] ?? "system")).toLowerCase();
+
+    // Para evitar problemas con arrays escalares en create:
+    const finalUsuarios = Array.from(new Set(usuarios.length ? usuarios : [creadoPor]));
+
+    const created = await db.proyecto.create({
+      data: {
+        nombre,
+        descripcion,
+        color,
+        deadline,
+        creadoPor,
+        usuarios: { set: finalUsuarios }, // <- importante
+      },
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        color: true,
+        deadline: true,
+        creadoPor: true,
         usuarios: true,
       },
     });
 
-    return res.status(201).json(mapProyecto(created));
-  } catch (e) { next(e); }
+    res.status(201).json({
+      id: created.id,
+      nombre: created.nombre,
+      descripcion: created.descripcion ?? "",
+      color: created.color,
+      deadline: created.deadline ? created.deadline.toISOString() : null,
+      creadoPor: created.creadoPor,
+      usuarios: created.usuarios,
+      tareas: { "por-hacer": [], "en-progreso": [], "completado": [] },
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
-/** PATCH /api/proyectos/:id */
-r.patch('/:id', async (req, res, next) => {
+// Editar
+router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, color, deadline } = req.body as {
-      nombre?: string; descripcion?: string; color?: string; deadline?: string | null;
-    };
+    const body = req.body ?? {};
 
-    const updated = await prisma.proyecto.update({
+    const data: Prisma.ProyectoUpdateInput = {};
+    if (typeof body.nombre === "string") data.nombre = body.nombre;
+    if (typeof body.descripcion === "string") data.descripcion = body.descripcion;
+    if (typeof body.color === "string") data.color = body.color;
+    if (body.deadline !== undefined) data.deadline = parseDeadline(body.deadline);
+
+    const updated = await db.proyecto.update({
       where: { id },
-      data: {
-        ...(nombre !== undefined ? { nombre } : {}),
-        ...(descripcion !== undefined ? { descripcion } : {}),
-        ...(color !== undefined ? { color } : {}),
-        ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null } : {}),
+      data,
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        color: true,
+        deadline: true,
+        creadoPor: true,
+        usuarios: true,
       },
-      include: { tareas: true, usuarios: true },
     });
 
-    return res.json(mapProyecto(updated));
-  } catch (e) { next(e); }
-});
-
-/** DELETE /api/proyectos/:id */
-r.delete('/:id', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    await prisma.proyecto.delete({ where: { id } });
-    return res.status(204).end();
-  } catch (e) { next(e); }
-});
-
-/** POST /api/proyectos/:id/usuarios  { usuario } */
-r.post('/:id/usuarios', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { usuario } = req.body as { usuario: string };
-    if (!usuario) return res.status(400).json({ error: 'usuario requerido' });
-
-    // upsert-like: si ya existe, no explota
-    await prisma.proyectoUsuario.upsert({
-      where: { proyectoId_email: { proyectoId: id, email: usuario.toLowerCase() } },
-      create: { proyectoId: id, email: usuario.toLowerCase() },
-      update: {},
+    res.json({
+      id: updated.id,
+      nombre: updated.nombre,
+      descripcion: updated.descripcion ?? "",
+      color: updated.color,
+      deadline: updated.deadline ? updated.deadline.toISOString() : null,
+      creadoPor: updated.creadoPor,
+      usuarios: updated.usuarios,
     });
+  } catch (e) {
+    next(e);
+  }
+});
 
-    const p = await prisma.proyecto.findUnique({
+// Eliminar
+router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    if (id.startsWith("temp-")) {
+      return res.status(204).end();
+    }
+
+    const exists = await db.proyecto.findUnique({
       where: { id },
-      include: { tareas: true, usuarios: true },
+      select: { id: true },
     });
-    if (!p) return res.status(404).json({ error: 'Proyecto no encontrado' });
-    return res.json(mapProyecto(p));
-  } catch (e) { next(e); }
+    if (!exists) {
+      return res.status(404).json({ error: "Proyecto no encontrado" });
+    }
+
+    await db.$transaction([
+      db.tarea.deleteMany({ where: { proyectoId: id } }),
+      db.chatMessage.deleteMany({ where: { proyectoId: id } }),
+      db.proyecto.delete({ where: { id } }),
+    ]);
+
+    res.status(204).end();
+  } catch (e: any) {
+    if (e?.code === "P2025") {
+      return res.status(404).json({ error: "Proyecto no encontrado" });
+    }
+    next(e);
+  }
 });
 
-/** DELETE /api/proyectos/:id/usuarios/:email */
-r.delete('/:id/usuarios/:email', async (req, res, next) => {
+/* ---------------- Colaboradores (NUEVO) ---------------- */
+
+// Añadir colaborador (coincide con tu frontend: POST /:id/usuarios { usuario })
+router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const usuarioRaw = req.body?.usuario;
+
+    if (!usuarioRaw || typeof usuarioRaw !== "string") {
+      return res.status(400).json({ error: "usuario requerido" });
+    }
+    const email = usuarioRaw.trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: "usuario inválido" });
+
+    const proj = await db.proyecto.findUnique({
+      where: { id },
+      select: { usuarios: true },
+    });
+    if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    if ((proj.usuarios ?? []).includes(email)) {
+      // idempotente
+      return res.status(204).end();
+    }
+
+    await db.proyecto.update({
+      where: { id },
+      data: { usuarios: { push: email } }, // Postgres array append
+    });
+
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Quitar colaborador
+router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id, email } = req.params;
-    await prisma.proyectoUsuario.delete({
-      where: { proyectoId_email: { proyectoId: id, email: email.toLowerCase() } },
-    });
-    return res.status(204).end();
-  } catch (e) { next(e); }
-});
+    const target = decodeURIComponent(String(email || "")).trim().toLowerCase();
+    if (!target) return res.status(400).json({ error: "email inválido" });
 
-/** POST /api/proyectos/:id/tareas */
-r.post('/:id/tareas', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { titulo, descripcion, prioridad, deadline, etiquetas, estado } = req.body as {
-      titulo: string; descripcion?: string; prioridad: 'baja'|'media'|'alta';
-      deadline?: string | null; etiquetas?: string[]; estado?: 'por-hacer'|'en-progreso'|'completado';
-    };
-    const created = await prisma.tarea.create({
-      data: {
-        proyectoId: id,
-        titulo,
-        descripcion: descripcion ?? '',
-        prioridad,
-        deadline: deadline ? new Date(deadline) : null,
-        etiquetas: etiquetas ?? [],
-        estado: EstadoMap.fromWire(estado ?? 'por-hacer'),
-      },
-    });
-    return res.status(201).json(mapTarea(created));
-  } catch (e) { next(e); }
-});
-
-/** PATCH /api/proyectos/:id/tareas/:tareaId */
-r.patch('/:id/tareas/:tareaId', async (req, res, next) => {
-  try {
-    const { tareaId } = req.params;
-    const { titulo, descripcion, prioridad, deadline, etiquetas } = req.body as {
-      titulo?: string; descripcion?: string; prioridad?: 'baja'|'media'|'alta';
-      deadline?: string | null; etiquetas?: string[];
-    };
-    const updated = await prisma.tarea.update({
-      where: { id: tareaId },
-      data: {
-        ...(titulo !== undefined ? { titulo } : {}),
-        ...(descripcion !== undefined ? { descripcion } : {}),
-        ...(prioridad !== undefined ? { prioridad } : {}),
-        ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null } : {}),
-        ...(etiquetas !== undefined ? { etiquetas } : {}),
-      },
-    });
-    return res.json(mapTarea(updated));
-  } catch (e) { next(e); }
-});
-
-/** DELETE /api/proyectos/:id/tareas/:tareaId */
-r.delete('/:id/tareas/:tareaId', async (req, res, next) => {
-  try {
-    const { tareaId } = req.params;
-    await prisma.tarea.delete({ where: { id: tareaId } });
-    return res.status(204).end();
-  } catch (e) { next(e); }
-});
-
-/** POST /api/proyectos/:id/tareas/move  { tareaId, from, to } */
-r.post('/:id/tareas/move', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { tareaId, from, to } = req.body as {
-      tareaId: string; from: 'por-hacer'|'en-progreso'|'completado'; to: 'por-hacer'|'en-progreso'|'completado';
-    };
-    if (!tareaId || !from || !to) return res.status(400).json({ error: 'payload inválido' });
-
-    await prisma.tarea.update({
-      where: { id: tareaId },
-      data: { estado: EstadoMap.fromWire(to) },
-    });
-
-    const p = await prisma.proyecto.findUnique({
+    const proj = await db.proyecto.findUnique({
       where: { id },
-      include: { tareas: true, usuarios: true },
+      select: { usuarios: true },
     });
-    if (!p) return res.status(404).json({ error: 'Proyecto no encontrado' });
-    return res.json(mapProyecto(p));
-  } catch (e) { next(e); }
+    if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    const current = proj.usuarios ?? [];
+    if (!current.includes(target)) {
+      // no estaba: idempotente
+      return res.status(204).end();
+    }
+
+    const next = current.filter((u) => u !== target);
+    await db.proyecto.update({
+      where: { id },
+      data: { usuarios: { set: next } }, // reemplazo completo
+    });
+
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
 });
 
-/** GET /api/proyectos/:id/chat */
-r.get('/:id/chat', async (req, res, next) => {
+/* ---------------- Tareas ---------------- */
+
+// Crear tarea
+router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const msgs = await prisma.chatMessage.findMany({
-      where: { proyectoId: id },
-      orderBy: { ts: 'asc' },
-      take: 200, // simple límite
+    const { id: proyectoId } = req.params;
+
+    const exists = await db.proyecto.findUnique({
+      where: { id: proyectoId },
+      select: { id: true },
     });
-    return res.json(msgs.map(m => ({
-      id: m.id,
-      proyectoId: m.proyectoId,
-      sender: m.sender,
-      text: m.text,
-      ts: m.ts.toISOString(),
-    })));
-  } catch (e) { next(e); }
+    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    const body = req.body ?? {};
+    const titulo = String(body.titulo ?? "").trim();
+    if (!titulo) return res.status(400).json({ error: "titulo requerido" });
+
+    const dbEstado = toDbEstadoFlexible(body.estado ?? "por-hacer");
+    if (!dbEstado) return res.status(400).json({ error: "estado inválido" });
+
+    const prioridad = toDbPrioridadFlexible(body.prioridad);
+
+    const created = await db.tarea.create({
+      data: {
+        proyectoId,
+        titulo,
+        descripcion: String(body.descripcion ?? ""),
+        prioridad,
+        deadline: parseDeadline(body.deadline),
+        etiquetas: Array.isArray(body.etiquetas) ? (body.etiquetas as string[]) : [],
+        estado: dbEstado,
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        prioridad: true,
+        deadline: true,
+        etiquetas: true,
+        estado: true,
+      },
+    });
+
+    res.status(201).json({
+      id: created.id,
+      titulo: created.titulo,
+      descripcion: created.descripcion ?? "",
+      prioridad: created.prioridad,
+      deadline: created.deadline ? created.deadline.toISOString() : null,
+      etiquetas: created.etiquetas ?? [],
+      estado:
+        created.estado === "por_hacer"
+          ? "por-hacer"
+          : created.estado === "en_progreso"
+          ? "en-progreso"
+          : "completado",
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
-/** POST /api/proyectos/:id/chat  { sender, text } */
-r.post('/:id/chat', async (req, res, next) => {
+// Editar tarea
+router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const { sender, text } = req.body as { sender: string; text: string };
-    if (!sender || !text) return res.status(400).json({ error: 'sender y text son requeridos' });
+    const { tareaId } = req.params;
+    const body = req.body ?? {};
+    const data: Prisma.TareaUpdateInput = {};
 
-    const created = await prisma.chatMessage.create({
-      data: { proyectoId: id, sender: sender.toLowerCase(), text },
+    if (typeof body.titulo === "string") data.titulo = body.titulo;
+    if (typeof body.descripcion === "string") data.descripcion = body.descripcion;
+    if (typeof body.prioridad !== "undefined") {
+      data.prioridad = toDbPrioridadFlexible(body.prioridad);
+    }
+    if (body.deadline !== undefined) data.deadline = parseDeadline(body.deadline);
+    if (Array.isArray(body.etiquetas)) data.etiquetas = body.etiquetas as string[];
+
+    const updated = await db.tarea.update({
+      where: { id: tareaId },
+      data,
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+        prioridad: true,
+        deadline: true,
+        etiquetas: true,
+        estado: true,
+      },
     });
 
-    return res.status(201).json({
+    res.json({
+      id: updated.id,
+      titulo: updated.titulo,
+      descripcion: updated.descripcion ?? "",
+      prioridad: updated.prioridad,
+      deadline: updated.deadline ? updated.deadline.toISOString() : null,
+      etiquetas: updated.etiquetas ?? [],
+      estado:
+        updated.estado === "por_hacer"
+          ? "por-hacer"
+          : updated.estado === "en_progreso"
+          ? "en-progreso"
+          : "completado",
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Mover tarea (acepta to/destino/estado)
+router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { tareaId } = req.body ?? {};
+    const rawTo = req.body?.to ?? req.body?.destino ?? req.body?.estado;
+    if (!tareaId) return res.status(400).json({ error: "tareaId requerido" });
+
+    const dbTo = toDbEstadoFlexible(rawTo);
+    if (!dbTo) return res.status(400).json({ error: "destino inválido" });
+
+    const updated = await db.tarea.update({
+      where: { id: String(tareaId) },
+      data: { estado: dbTo },
+      select: { id: true },
+    });
+
+    res.json({ ok: true, id: updated.id });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// **ELIMINAR tarea**
+router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: proyectoId, tareaId } = req.params;
+
+    const result = await db.tarea.deleteMany({
+      where: { id: tareaId, proyectoId },
+    });
+
+    if (result.count === 0) {
+      return res.status(404).json({ error: "Tarea no encontrada" });
+    }
+
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+/* ---------------- Chat ---------------- */
+
+router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: proyectoId } = req.params;
+
+    const exists = await db.proyecto.findUnique({
+      where: { id: proyectoId },
+      select: { id: true },
+    });
+    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    try {
+      const rows = await db.chatMessage.findMany({
+        where: { proyectoId },
+        orderBy: { id: "asc" },
+      });
+
+      const out = rows.map((m) => {
+        const tsAny = (m as any).createdAt ?? (m as any).ts ?? new Date();
+        return {
+          id: m.id,
+          proyectoId: m.proyectoId,
+          sender: m.sender,
+          text: m.text,
+          ts: new Date(tsAny).toISOString(),
+        };
+      });
+
+      res.json(out);
+    } catch (err: any) {
+      if (err?.code === "P2021") return res.json([]);
+      throw err;
+    }
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id: proyectoId } = req.params;
+    const { sender, text } = req.body ?? {};
+
+    if (!sender || !text) {
+      return res.status(400).json({ error: "sender y text son requeridos" });
+    }
+
+    const exists = await db.proyecto.findUnique({
+      where: { id: proyectoId },
+      select: { id: true },
+    });
+    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    const created = await db.chatMessage.create({
+      data: {
+        proyectoId,
+        sender: String(sender).trim().toLowerCase(),
+        text: String(text),
+      },
+    });
+
+    const tsAny = (created as any).createdAt ?? (created as any).ts ?? new Date();
+
+    res.status(201).json({
       id: created.id,
       proyectoId: created.proyectoId,
       sender: created.sender,
       text: created.text,
-      ts: created.ts.toISOString(),
+      ts: new Date(tsAny).toISOString(),
     });
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 });
 
-export default r;
+export default router;
