@@ -1,0 +1,63 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Estado {
+  por_hacer   @map("por-hacer")
+  en_progreso @map("en-progreso")
+  completado
+}
+
+enum Prioridad {
+  alta
+  media
+  baja
+}
+
+model Proyecto {
+  id          String   @id @default(cuid())
+  nombre      String
+  descripcion String?
+  color       String   @default("#3B82F6")
+  deadline    DateTime?
+  creadoPor   String
+  usuarios    String[] @db.Text
+  tareas      Tarea[]
+  mensajes    ChatMessage[]        // <- NUEVO
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Tarea {
+  id          String    @id @default(uuid())
+  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId  String
+
+  titulo      String
+  descripcion String?
+  prioridad   Prioridad @default(media)
+  deadline    DateTime?
+  etiquetas   String[]  @db.Text
+  estado      Estado    @default(por_hacer)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ChatMessage {
+  id          String    @id @default(cuid())
+  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId  String
+  sender      String
+  text        String    @db.Text
+  ts          DateTime  @default(now())
+
+  @@index([proyectoId, ts])
+}
