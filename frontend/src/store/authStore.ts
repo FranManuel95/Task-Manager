@@ -1,89 +1,94 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { authApi } from "../services/api";
 
-// Tipo del usuario autenticado
-type Usuario = {
+export type AuthUser = {
   email: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  birthdate?: string | null;
+  jobTitle?: string | null;
+  phone?: string | null;
 };
 
-// Estructura del objeto de usuarios simulados
-type MockUser = {
-  password: string;
+export type RegisterExtras = {
+  name?: string;
+  avatarUrl?: string;
+  birthdate?: string; // yyyy-mm-dd
+  jobTitle?: string;
+  phone?: string;
 };
 
 type AuthState = {
-  usuario: Usuario | null;
+  usuario: AuthUser | null;
   error: string | null;
 
-  login: (email: string, password: string) => void;
-  register: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, extras?: RegisterExtras) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
 };
 
 export const useAuthStore = create<AuthState>()(
-  persist(
+  // 👇 IMPORTANTE: anotar el genérico aquí
+  persist<AuthState>(
     (set) => ({
       usuario: null,
       error: null,
 
-      login: (email: string, password: string) => {
-        const users: Record<string, MockUser> = JSON.parse(
-          localStorage.getItem("mock-users") ?? "{}"
-        );
-
-        const user = users[email];
-
-        if (!user) {
-          set({ error: "Usuario no registrado" });
-          return;
-        }
-
-        if (user.password !== password) {
-          set({ error: "Contraseña incorrecta" });
-          return;
-        }
-
-        set({ usuario: { email }, error: null });
-      },
-
-      register: (email: string, password: string) => {
-        if (!email || !password) {
+      login: async (email, password) => {
+        const em = (email ?? "").trim().toLowerCase();
+        if (!em || !password) {
           set({ error: "Email y contraseña requeridos" });
           return false;
         }
-
-        if (!email.includes("@")) {
-          set({ error: "Email inválido" });
+        try {
+          const res: any = await authApi.login({ email: em, password });
+          set({
+            usuario: {
+              email: res?.user?.email ?? em,
+              name: res?.user?.name ?? null,
+              avatarUrl: res?.user?.avatarUrl ?? null,
+              birthdate: res?.user?.birthdate ?? null,
+              jobTitle: res?.user?.jobTitle ?? null,
+              phone: res?.user?.phone ?? null,
+            },
+            error: null,
+          });
+          return true;
+        } catch {
+          set({ error: "Credenciales inválidas" });
           return false;
         }
+      },
 
-        if (password.length < 6) {
-          set({ error: "La contraseña debe tener al menos 6 caracteres" });
+      register: async (email, password, extras) => {
+        const em = (email ?? "").trim().toLowerCase();
+        if (!em || !password) {
+          set({ error: "Email y contraseña requeridos" });
           return false;
         }
-
-        const users: Record<string, MockUser> = JSON.parse(
-          localStorage.getItem("mock-users") ?? "{}"
-        );
-
-        if (users[email]) {
-          set({ error: "El usuario ya está registrado" });
+        try {
+          await authApi.register({
+            email: em,
+            password,
+            name: extras?.name,
+            avatarUrl: extras?.avatarUrl,
+            birthdate: extras?.birthdate,
+            jobTitle: extras?.jobTitle,
+            phone: extras?.phone,
+          });
+          set({ error: null });
+          return true;
+        } catch {
+          set({ error: "No se pudo registrar (¿email ya existe?)" });
           return false;
         }
-
-        users[email] = { password };
-        localStorage.setItem("mock-users", JSON.stringify(users));
-
-        set({ error: null });
-        return true;
       },
 
       logout: () => set({ usuario: null }),
       clearError: () => set({ error: null }),
     }),
-    {
-      name: "auth-storage",
-    }
+    { name: "auth-storage" }
   )
 );

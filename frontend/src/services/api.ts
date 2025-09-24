@@ -1,4 +1,3 @@
-// src/services/api.ts
 import type { Proyecto } from "../types/proyecto";
 import type { Tarea } from "../types/tarea";
 import type { Estado } from "../types/estado";
@@ -97,13 +96,13 @@ export const api = {
       dto
     ),
 
-  // 🔁 Mapeamos a lo que tu backend espera: destino (+ origen por si lo valida)
+  // Mover tarea — el backend acepta to/destino/estado (usamos destino para ser explícitos)
   moveTarea: (proyectoId: string, payload: MoveTareaDTO) => {
     const body: Record<string, unknown> = {
       tareaId: payload.tareaId,
-      destino: payload.to,      // 👈 antes mandábamos "to"
+      destino: payload.to,
     };
-    if (payload.from) body.origen = payload.from; // opcional si el backend lo requiere
+    if (payload.from) body.origen = payload.from;
     if (typeof payload.index === "number") body.index = payload.index;
 
     return http.post<Proyecto>(
@@ -131,4 +130,23 @@ export const api = {
       sender,
       text,
     }),
+};
+
+// --- Auth ---
+export const authApi = {
+  register: (payload: {
+    email: string;
+    password: string;
+    name?: string;
+    avatarUrl?: string;
+    birthdate?: string; // ISO 'YYYY-MM-DD' o fecha completa
+    jobTitle?: string;
+    phone?: string;
+  }) => http.post<{ id: string; email: string }>(`/api/auth/register`, payload),
+  
+   login: (payload: { email: string; password: string }) =>
+    http.post<{ email: string; name?: string | null; avatarUrl?: string | null }>(
+      "/api/auth/login",
+      payload
+    ),
 };

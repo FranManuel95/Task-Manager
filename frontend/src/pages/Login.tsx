@@ -3,9 +3,12 @@ import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+console.log("keys store", Object.keys(useAuthStore.getState?.() || {}));
+
 export default function Login() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
   const login = useAuthStore((state) => state.login);
   const error = useAuthStore((state) => state.error);
@@ -18,9 +21,17 @@ export default function Login() {
     clearError();
   }, [clearError]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    login(email, password);
+    setLoading(true);
+    const ok = await login(email, password);
+    setLoading(false);
+
+    if (ok) {
+      toast.success("Bienvenido 👋");
+      navigate("/dashboard");
+    }
+    // Si no ok, el store ya habrá puesto error y se toast-ea en el effect de abajo
   };
 
   useEffect(() => {
@@ -59,9 +70,12 @@ export default function Login() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          disabled={loading}
+          className={`w-full text-white py-2 rounded transition ${
+            loading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          Entrar
+          {loading ? "Entrando..." : "Entrar"}
         </button>
       </form>
     </div>

@@ -1,4 +1,3 @@
-// src/store/tareasStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { TareasStore } from "./tareas.types";
@@ -224,7 +223,7 @@ export const useTareasStore = create<TareasStore>()(
               await api.moveTarea(proyectoId, { tareaId, from, to: destino });
             } catch (err) {
               console.warn("moveTarea (backend) falló, se mantiene estado local:", err);
-              // opcional: revertir aquí si quieres
+              // opcional: revertir aquí si quisieras
             }
           })();
         }

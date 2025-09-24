@@ -61,3 +61,18 @@ model ChatMessage {
 
   @@index([proyectoId, ts])
 }
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+
+  name       String?
+  avatarUrl  String?
+  birthdate  DateTime?
+  jobTitle   String?
+  phone      String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+

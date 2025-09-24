@@ -32,6 +32,9 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - DATABASE_URL=postgresql://app:app@db:5432/app
+      - JWT_SECRET=supersecret-dev-change-me
+      - COOKIE_NAME=access_token
+      - COOKIE_SECURE=false
     depends_on:
       db:
         condition: service_healthy
