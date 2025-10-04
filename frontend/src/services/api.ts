@@ -133,20 +133,48 @@ export const api = {
 };
 
 // --- Auth ---
+
+// TIPOS
+export type RegisterPayload = {
+  email: string;
+  password: string;
+  name?: string;
+  avatarUrl?: string;
+  birthdate?: string; // yyyy-mm-dd
+  jobTitle?: string;
+  phone?: string;
+};
+
+export type SessionUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+};
+
+// AUTH API
+// ...
 export const authApi = {
-  register: (payload: {
-    email: string;
-    password: string;
-    name?: string;
-    avatarUrl?: string;
-    birthdate?: string; // ISO 'YYYY-MM-DD' o fecha completa
-    jobTitle?: string;
-    phone?: string;
-  }) => http.post<{ id: string; email: string }>(`/api/auth/register`, payload),
-  
-   login: (payload: { email: string; password: string }) =>
+  register: (payload: RegisterPayload) =>
+    http.post<{ ok: true }>("/api/auth/register", payload),
+
+  login: (email: string, password: string) =>
     http.post<{ email: string; name?: string | null; avatarUrl?: string | null }>(
       "/api/auth/login",
-      payload
+      { email, password }
     ),
+
+  // ⬇️ si 401 => devuelve null en vez de lanzar
+  me: async () => {
+    try {
+      return await http.get<SessionUser>("/api/auth/me");
+    } catch (e: any) {
+      if (e?.status === 401) return null;
+      throw e;
+    }
+  },
+
+  logout: () => http.post<void>("/api/auth/logout"),
 };
+
+

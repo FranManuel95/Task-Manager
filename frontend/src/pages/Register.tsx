@@ -57,7 +57,10 @@ export default function Register() {
     };
 
     setLoading(true);
-    const success = await register(email, password, extras); // 👈 sin hacks
+    // ...
+    const success = await register({ email, password, ...extras });
+// ...
+
     setLoading(false);
 
     if (success) {

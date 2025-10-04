@@ -3,8 +3,6 @@ import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-console.log("keys store", Object.keys(useAuthStore.getState?.() || {}));
-
 export default function Login() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");

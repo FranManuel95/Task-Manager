@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
         target: "http://api:4000", // servicio del compose
         changeOrigin: true,
         // "rewrite" no es necesario si no cambias el path base
-        // secure: false // solo si tu backend fuese HTTPS con cert autogenerado
+        secure: false // solo si tu backend fuese HTTPS con cert autogenerado
       },
     },
     // Si alguna vez usas proxy inverso y HMR no conecta, descomenta:

@@ -1,93 +1,95 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authApi } from "../services/api";
+import { authApi, type RegisterPayload } from "../services/api";
+import { useTareasStore } from "./tareasStore";
 
-export type AuthUser = {
+type Usuario = {
   email: string;
   name?: string | null;
   avatarUrl?: string | null;
-  birthdate?: string | null;
-  jobTitle?: string | null;
-  phone?: string | null;
-};
-
-export type RegisterExtras = {
-  name?: string;
-  avatarUrl?: string;
-  birthdate?: string; // yyyy-mm-dd
-  jobTitle?: string;
-  phone?: string;
 };
 
 type AuthState = {
-  usuario: AuthUser | null;
+  usuario: Usuario | null;
   error: string | null;
+  loading: boolean;
+  hasCheckedSession: boolean; // ⬅️ nuevo
 
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, extras?: RegisterExtras) => Promise<boolean>;
-  logout: () => void;
+  register: (payload: RegisterPayload) => Promise<boolean>;
+  me: () => Promise<void>;
+  logout: () => Promise<void>;
   clearError: () => void;
 };
 
 export const useAuthStore = create<AuthState>()(
-  // 👇 IMPORTANTE: anotar el genérico aquí
-  persist<AuthState>(
+  persist(
     (set) => ({
       usuario: null,
       error: null,
+      loading: false,
+      hasCheckedSession: false, // ⬅️
 
-      login: async (email, password) => {
-        const em = (email ?? "").trim().toLowerCase();
-        if (!em || !password) {
-          set({ error: "Email y contraseña requeridos" });
-          return false;
-        }
+      async login(email, password) {
+        set({ loading: true, error: null });
         try {
-          const res: any = await authApi.login({ email: em, password });
-          set({
-            usuario: {
-              email: res?.user?.email ?? em,
-              name: res?.user?.name ?? null,
-              avatarUrl: res?.user?.avatarUrl ?? null,
-              birthdate: res?.user?.birthdate ?? null,
-              jobTitle: res?.user?.jobTitle ?? null,
-              phone: res?.user?.phone ?? null,
-            },
-            error: null,
-          });
+          const res = await authApi.login(email, password);
+          const usuario: Usuario = {
+            email: res.email,
+            name: res.name ?? null,
+            avatarUrl: res.avatarUrl ?? null,
+          };
+          set({ usuario, loading: false, error: null, hasCheckedSession: true });
+          try { useTareasStore.getState().setUsuarioActual(usuario.email); } catch {}
           return true;
-        } catch {
-          set({ error: "Credenciales inválidas" });
+        } catch (e: any) {
+          const msg = e?.status === 401 ? "Credenciales inválidas" : "No se pudo iniciar sesión";
+          set({ error: msg, loading: false, hasCheckedSession: true });
           return false;
         }
       },
 
-      register: async (email, password, extras) => {
-        const em = (email ?? "").trim().toLowerCase();
-        if (!em || !password) {
-          set({ error: "Email y contraseña requeridos" });
-          return false;
-        }
+      async register(payload) {
+        set({ loading: true, error: null });
         try {
-          await authApi.register({
-            email: em,
-            password,
-            name: extras?.name,
-            avatarUrl: extras?.avatarUrl,
-            birthdate: extras?.birthdate,
-            jobTitle: extras?.jobTitle,
-            phone: extras?.phone,
-          });
-          set({ error: null });
+          await authApi.register(payload);
+          set({ loading: false, error: null });
           return true;
-        } catch {
-          set({ error: "No se pudo registrar (¿email ya existe?)" });
+        } catch (e: any) {
+          const msg = e?.status === 409 ? "Ese email ya existe" : "No se pudo registrar";
+          set({ error: msg, loading: false });
           return false;
         }
       },
 
-      logout: () => set({ usuario: null }),
-      clearError: () => set({ error: null }),
+      async me() {
+        try {
+          const u = await authApi.me(); // puede ser null
+          if (!u) {
+            set({ usuario: null, hasCheckedSession: true });
+            return;
+          }
+          const usuario: Usuario = {
+            email: u.email,
+            name: u.name ?? null,
+            avatarUrl: u.avatarUrl ?? null,
+          };
+          set({ usuario, hasCheckedSession: true });
+          try { useTareasStore.getState().setUsuarioActual(usuario.email); } catch {}
+        } catch {
+          set({ usuario: null, hasCheckedSession: true });
+        }
+      },
+
+      async logout() {
+        try { await authApi.logout(); } catch {}
+        set({ usuario: null, hasCheckedSession: true });
+        try { useTareasStore.getState().setUsuarioActual(""); } catch {}
+      },
+
+      clearError() {
+        set({ error: null });
+      },
     }),
     { name: "auth-storage" }
   )

@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { db } from "../db";
 import { $Enums, Prisma } from "@prisma/client";
+import { requireAuthUser } from "../middleware/requireAuth";
 
 const router = Router();
 
@@ -36,12 +37,32 @@ function parseDeadline(d: unknown): Date | null {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
+/* ---- Unión discriminada para evitar el error en membership.code ---- */
+type Membership =
+  | { ok: true; proj: { id: string; usuarios: string[] | null; creadoPor: string } }
+  | { ok: false; code: 403 | 404 };
+
+async function ensureMember(proyectoId: string, email: string): Promise<Membership> {
+  const proj = await db.proyecto.findUnique({
+    where: { id: proyectoId },
+    select: { id: true, usuarios: true, creadoPor: true },
+  });
+  if (!proj) return { ok: false, code: 404 } as const;
+  if (!(proj.usuarios ?? []).includes(email)) return { ok: false, code: 403 } as const;
+  return { ok: true, proj } as const;
+}
+
+/* ------------- A PARTIR DE AQUÍ: RUTAS PROTEGIDAS ------------- */
+router.use(requireAuthUser);
+
 /* ---------------- Proyectos ---------------- */
 
-// Lista (ligera)
-router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+// Lista (solo proyectos donde soy colaborador)
+router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const proyectos = await db.proyecto.findMany({
+      where: { usuarios: { has: email } },
       select: {
         id: true,
         nombre: true,
@@ -49,7 +70,7 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
         color: true,
         deadline: true,
         creadoPor: true,
-        usuarios: true, // string[]
+        usuarios: true,
       },
       orderBy: { createdAt: "asc" },
     });
@@ -61,7 +82,7 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
       color: p.color,
       deadline: p.deadline ? p.deadline.toISOString() : null,
       creadoPor: p.creadoPor,
-      usuarios: p.usuarios, // string[]
+      usuarios: p.usuarios,
       tareas: { "por-hacer": [], "en-progreso": [], "completado": [] },
     }));
 
@@ -71,13 +92,14 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Detalle
+// Detalle (solo si soy colaborador)
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id } = req.params;
 
-    const p = await db.proyecto.findUnique({
-      where: { id },
+    const p = await db.proyecto.findFirst({
+      where: { id, usuarios: { has: email } },
       select: {
         id: true,
         nombre: true,
@@ -85,7 +107,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
         color: true,
         deadline: true,
         creadoPor: true,
-        usuarios: true, // string[]
+        usuarios: true,
         tareas: {
           select: {
             id: true,
@@ -133,7 +155,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
       color: p.color,
       deadline: p.deadline ? p.deadline.toISOString() : null,
       creadoPor: p.creadoPor,
-      usuarios: p.usuarios, // string[]
+      usuarios: p.usuarios,
       tareas,
     });
   } catch (e) {
@@ -141,9 +163,10 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Crear  ⬅️ usamos { set: [...] } y garantizamos al menos creadoPor
+// Crear — creadoPor = usuario en sesión; me aseguro de estar en usuarios
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const body = req.body ?? {};
     const nombre = String(body.nombre ?? "").trim();
     const descripcion = String(body.descripcion ?? "");
@@ -159,10 +182,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       .map((u) => String(u || "").trim().toLowerCase())
       .filter(Boolean);
 
-    const creadoPor = (String(body.creadoPor ?? usuarios[0] ?? "system")).toLowerCase();
-
-    // Para evitar problemas con arrays escalares en create:
-    const finalUsuarios = Array.from(new Set(usuarios.length ? usuarios : [creadoPor]));
+    const finalUsuarios = Array.from(new Set([email, ...usuarios]));
 
     const created = await db.proyecto.create({
       data: {
@@ -170,8 +190,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
         descripcion,
         color,
         deadline,
-        creadoPor,
-        usuarios: { set: finalUsuarios }, // <- importante
+        creadoPor: email,
+        usuarios: { set: finalUsuarios },
       },
       select: {
         id: true,
@@ -199,12 +219,16 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Editar
+// Editar — solo si soy colaborador
 router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id } = req.params;
-    const body = req.body ?? {};
 
+    const membership = await ensureMember(id, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
+    const body = req.body ?? {};
     const data: Prisma.ProyectoUpdateInput = {};
     if (typeof body.nombre === "string") data.nombre = body.nombre;
     if (typeof body.descripcion === "string") data.descripcion = body.descripcion;
@@ -239,22 +263,22 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-// Eliminar
+// Eliminar — solo el creador; borra tareas y chat (como ya hacías)
 router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id } = req.params;
 
     if (id.startsWith("temp-")) {
       return res.status(204).end();
     }
 
-    const exists = await db.proyecto.findUnique({
+    const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, creadoPor: true },
     });
-    if (!exists) {
-      return res.status(404).json({ error: "Proyecto no encontrado" });
-    }
+    if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
+    if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
 
     await db.$transaction([
       db.tarea.deleteMany({ where: { proyectoId: id } }),
@@ -271,34 +295,35 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-/* ---------------- Colaboradores (NUEVO) ---------------- */
+/* ---------------- Colaboradores ---------------- */
 
-// Añadir colaborador (coincide con tu frontend: POST /:id/usuarios { usuario })
+// Añadir colaborador — solo el creador
 router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id } = req.params;
     const usuarioRaw = req.body?.usuario;
 
     if (!usuarioRaw || typeof usuarioRaw !== "string") {
       return res.status(400).json({ error: "usuario requerido" });
     }
-    const email = usuarioRaw.trim().toLowerCase();
-    if (!email) return res.status(400).json({ error: "usuario inválido" });
+    const toAdd = usuarioRaw.trim().toLowerCase();
+    if (!toAdd) return res.status(400).json({ error: "usuario inválido" });
 
     const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { usuarios: true },
+      select: { usuarios: true, creadoPor: true },
     });
     if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
+    if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
 
-    if ((proj.usuarios ?? []).includes(email)) {
-      // idempotente
+    if ((proj.usuarios ?? []).includes(toAdd)) {
       return res.status(204).end();
     }
 
     await db.proyecto.update({
       where: { id },
-      data: { usuarios: { push: email } }, // Postgres array append
+      data: { usuarios: { push: toAdd } },
     });
 
     res.status(204).end();
@@ -307,29 +332,30 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// Quitar colaborador
+// Quitar colaborador — solo el creador
 router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id, email } = req.params;
-    const target = decodeURIComponent(String(email || "")).trim().toLowerCase();
+    const email = req.authUser!.email;
+    const { id } = req.params;
+    const target = decodeURIComponent(String(req.params.email || "")).trim().toLowerCase();
     if (!target) return res.status(400).json({ error: "email inválido" });
 
     const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { usuarios: true },
+      select: { usuarios: true, creadoPor: true },
     });
     if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
+    if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
 
     const current = proj.usuarios ?? [];
     if (!current.includes(target)) {
-      // no estaba: idempotente
       return res.status(204).end();
     }
 
     const next = current.filter((u) => u !== target);
     await db.proyecto.update({
       where: { id },
-      data: { usuarios: { set: next } }, // reemplazo completo
+      data: { usuarios: { set: next } },
     });
 
     res.status(204).end();
@@ -340,16 +366,14 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
 
 /* ---------------- Tareas ---------------- */
 
-// Crear tarea
+// Crear tarea — solo si soy colaborador
 router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id: proyectoId } = req.params;
 
-    const exists = await db.proyecto.findUnique({
-      where: { id: proyectoId },
-      select: { id: true },
-    });
-    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
     const body = req.body ?? {};
     const titulo = String(body.titulo ?? "").trim();
@@ -400,10 +424,15 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Editar tarea
+// Editar tarea — solo si soy colaborador
 router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { tareaId } = req.params;
+    const email = req.authUser!.email;
+    const { id: proyectoId, tareaId } = req.params;
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
     const body = req.body ?? {};
     const data: Prisma.TareaUpdateInput = {};
 
@@ -448,9 +477,15 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
   }
 });
 
-// Mover tarea (acepta to/destino/estado)
+// Mover tarea — solo si soy colaborador
 router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
+    const { id: proyectoId } = req.params;
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
     const { tareaId } = req.body ?? {};
     const rawTo = req.body?.to ?? req.body?.destino ?? req.body?.estado;
     if (!tareaId) return res.status(400).json({ error: "tareaId requerido" });
@@ -470,10 +505,14 @@ router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFu
   }
 });
 
-// **ELIMINAR tarea**
+// Eliminar tarea — solo si soy colaborador
 router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id: proyectoId, tareaId } = req.params;
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
     const result = await db.tarea.deleteMany({
       where: { id: tareaId, proyectoId },
@@ -493,13 +532,11 @@ router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: 
 
 router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id: proyectoId } = req.params;
 
-    const exists = await db.proyecto.findUnique({
-      where: { id: proyectoId },
-      select: { id: true },
-    });
-    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
     try {
       const rows = await db.chatMessage.findMany({
@@ -530,18 +567,16 @@ router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) 
 
 router.post("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const email = req.authUser!.email;
     const { id: proyectoId } = req.params;
     const { sender, text } = req.body ?? {};
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
     if (!sender || !text) {
       return res.status(400).json({ error: "sender y text son requeridos" });
     }
-
-    const exists = await db.proyecto.findUnique({
-      where: { id: proyectoId },
-      select: { id: true },
-    });
-    if (!exists) return res.status(404).json({ error: "Proyecto no encontrado" });
 
     const created = await db.chatMessage.create({
       data: {

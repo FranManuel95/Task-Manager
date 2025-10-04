@@ -35,6 +35,7 @@ services:
       - JWT_SECRET=supersecret-dev-change-me
       - COOKIE_NAME=access_token
       - COOKIE_SECURE=false
+      - SESSION_SECRET=dev-super-secret
     depends_on:
       db:
         condition: service_healthy
