@@ -91,6 +91,11 @@ export default function Tarea({
     return null;
   };
 
+  // 👇 helpers nombres/fecha
+  const creatorLabel = tarea.createdByName || tarea.createdBy || "—";
+  const updaterLabel = tarea.updatedByName || tarea.updatedBy || "—";
+  const updatedAtLabel = tarea.updatedAt ? new Date(tarea.updatedAt).toLocaleString() : null;
+
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 }
     : undefined;
@@ -178,8 +183,22 @@ export default function Tarea({
                 ✎
               </button>
             </p>
+
             {tarea.descripcion && <p className="text-sm text-gray-600 mt-1">{tarea.descripcion}</p>}
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+
+            {/* 👇 NUEVO: metadatos de autoría */}
+            <div className="mt-2 space-y-0.5">
+              <p className="text-xs text-gray-500">
+                <span className="font-medium text-gray-600">Creada por:</span> {creatorLabel}
+              </p>
+              <p className="text-xs text-gray-500">
+                <span className="font-medium text-gray-600">Última modificación:</span>{" "}
+                {updaterLabel}
+                {updatedAtLabel ? ` — ${updatedAtLabel}` : ""}
+              </p>
+            </div>
+
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
               Prioridad:{" "}
               <span
                 className={`inline-block text-xs px-2 py-1 rounded font-medium ${
@@ -193,8 +212,10 @@ export default function Tarea({
                 {tarea.prioridad}
               </span>
             </p>
+
             {tarea.deadline && <p className="text-xs text-gray-500 mt-1">📅 {tarea.deadline}</p>}
             <div className="mt-1">{warningDeadline()}</div>
+
             {tarea.etiquetas.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {tarea.etiquetas.map((etiqueta, i) => (
@@ -205,6 +226,7 @@ export default function Tarea({
               </div>
             )}
           </div>
+
           <div className="flex gap-2 items-start">
             <div
               {...listeners}

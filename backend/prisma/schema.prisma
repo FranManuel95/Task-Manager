@@ -21,18 +21,21 @@ enum Prioridad {
 }
 
 model Proyecto {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   nombre      String
   descripcion String?
-  color       String   @default("#3B82F6")
+  color       String       @default("#3B82F6")
   deadline    DateTime?
   creadoPor   String
-  usuarios    String[] @db.Text
+  usuarios    String[]     @db.Text
   tareas      Tarea[]
-  mensajes    ChatMessage[]        // <- NUEVO
+  mensajes    ChatMessage[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // 👇 NUEVO: relación con el registro de auditoría (logs)
+  logs        AuditLog[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Tarea {
@@ -46,6 +49,10 @@ model Tarea {
   deadline    DateTime?
   etiquetas   String[]  @db.Text
   estado      Estado    @default(por_hacer)
+
+  // 👇 NUEVO: trazabilidad de autoría y última edición
+  createdBy   String?
+  updatedBy   String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -61,6 +68,24 @@ model ChatMessage {
 
   @@index([proyectoId, ts])
 }
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId  String
+
+  // entidad afectada (libre para no romper nada en el BE)
+  entity      String          // "proyecto" | "tarea" | "chat" | ...
+  entityId    String?
+  action      String          // "create" | "update" | "delete" | "move" | ...
+  actorEmail  String
+  payload     Json?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([proyectoId, createdAt])
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -75,4 +100,3 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
-

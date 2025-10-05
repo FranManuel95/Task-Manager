@@ -15,6 +15,8 @@ import { ordenPrioridad, estados } from "./constantes";
 import { Estado, Tarea, Prioridad } from "../../types";
 import { useTareasStore } from "../../store/tareasStore";
 import ChatPanel from "./ChatPanel";
+import { useAuthStore } from "../../store/authStore";
+import ActivityPanel from "./ActivityPanel"
 
 
 export default function Project() {
@@ -37,9 +39,12 @@ export default function Project() {
 
   const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
 
+  const usuario = useAuthStore((s) => s.usuario);
+  const isAdmin = !!usuario?.email && !!proyecto && usuario.email === proyecto.creadoPor;
+
   const handleAgregar = () => {
     const email = emailNuevo.trim();
-    if (!email || !proyectoId) return;
+    if (!email || !proyectoId || !isAdmin) return;
     agregarColaborador(proyectoId, email);
     setEmailNuevo("");
   };
@@ -152,17 +157,28 @@ export default function Project() {
       {/* Invitar colaborador (inline) */}
       <div className="mt-6">
         <h3 className="font-semibold text-sm mb-2">Invitar colaborador</h3>
+
+        {!isAdmin && (
+          <p className="text-xs text-gray-500 mb-2">
+            Solo el administrador del proyecto puede invitar colaboradores.
+          </p>
+        )}
+
         <div className="flex gap-2">
           <input
             type="email"
             value={emailNuevo}
             onChange={(e) => setEmailNuevo(e.target.value)}
             placeholder="Correo del colaborador"
-            className="border px-2 py-1 rounded w-full"
+            className="border px-2 py-1 rounded w-full disabled:bg-gray-100 disabled:cursor-not-allowed"
+            disabled={!isAdmin}
+            title={!isAdmin ? "Solo el admin puede invitar" : ""}
           />
           <button
             onClick={handleAgregar}
-            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
+            disabled={!isAdmin || !emailNuevo.trim()}
+            title={!isAdmin ? "Solo el admin puede invitar" : ""}
           >
             Añadir
           </button>
@@ -171,9 +187,7 @@ export default function Project() {
 
       {/* Chat del proyecto */}
       {proyectoId && <ChatPanel proyectoId={proyectoId} />}
-
-      {/* (Opcional) componente dedicado de colaboradores */}
-      {/* <Colaboradores proyectoId={proyectoId!} /> */}
+      {proyectoId && <ActivityPanel proyectoId={proyectoId} />}
     </div>
   );
 }

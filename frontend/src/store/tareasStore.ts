@@ -6,6 +6,31 @@ import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 import { api } from "../services/api";
 import type { Estado, Prioridad, Tarea } from "../types";
 
+/* -------------------- Helpers de mapeo -------------------- */
+function tareaFromApi(t: any): Tarea {
+  return {
+    id: t.id,
+    titulo: t.titulo,
+    descripcion: t.descripcion ?? "",
+    prioridad: t.prioridad,
+    deadline: t.deadline ?? null,
+    etiquetas: t.etiquetas ?? [],
+    createdBy: t.createdBy ?? null,
+    createdByName: t.createdByName ?? null,
+    updatedBy: t.updatedBy ?? null,
+    updatedByName: t.updatedByName ?? null,
+    updatedAt: t.updatedAt ?? null,
+  };
+}
+
+function replaceTaskInColumn(
+  list: Tarea[],
+  tareaId: string,
+  replacer: (prev: Tarea) => Tarea
+): Tarea[] {
+  return list.map((t) => (t.id === tareaId ? replacer(t) : t));
+}
+
 export const useTareasStore = create<TareasStore>()(
   persist(
     (set, get) => ({
@@ -66,13 +91,15 @@ export const useTareasStore = create<TareasStore>()(
 
       // --- Tareas ---
       agregarTarea: (proyectoId: string, estado: Estado, titulo: string) => {
-        const email = get().usuarioActual;
+        const email = (get().usuarioActual ?? "").trim().toLowerCase();
         const loc = locateProyecto(get(), proyectoId);
         if (!loc) return;
         const { ownerEmail, proyecto } = loc;
         if (!canEditProyecto(email, proyecto)) return;
 
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        // Tarea temporal (optimista) con metadatos básicos
         const nueva: Tarea = {
           id: tempId,
           titulo: titulo.trim(),
@@ -80,6 +107,11 @@ export const useTareasStore = create<TareasStore>()(
           prioridad: "media" as Prioridad,
           deadline: null,
           etiquetas: [],
+          createdBy: email,
+          createdByName: null,
+          updatedBy: email,
+          updatedByName: null,
+          updatedAt: new Date().toISOString(),
         };
 
         // Optimista
@@ -99,7 +131,7 @@ export const useTareasStore = create<TareasStore>()(
           },
         }));
 
-        // Persistencia real + remapeo id
+        // Persistencia real + remapeo id y sustitución por el objeto completo del backend
         if (!proyectoId.startsWith("temp-")) {
           (async () => {
             try {
@@ -111,11 +143,13 @@ export const useTareasStore = create<TareasStore>()(
                 etiquetas: [],
               });
 
+              const createdMapped = tareaFromApi(created);
+
               set((state) => {
                 const p = state.proyectos[ownerEmail]?.[proyectoId];
                 if (!p) return state;
                 const col = p.tareas[estado].map((t) =>
-                  t.id === tempId ? { ...t, id: created.id } : t
+                  t.id === tempId ? createdMapped : t
                 );
                 return {
                   proyectos: {
@@ -175,6 +209,7 @@ export const useTareasStore = create<TareasStore>()(
         if (!loc) return;
 
         const { ownerEmail, proyecto } = loc;
+        const actor = (st.usuarioActual ?? "").trim().toLowerCase();
 
         // 1) localizar columna origen
         const columnas: Estado[] = ["por-hacer", "en-progreso", "completado"];
@@ -187,16 +222,23 @@ export const useTareasStore = create<TareasStore>()(
         }
         if (!from || from === destino) return;
 
-        // 2) mover en local (optimista)
+        // 2) mover en local (optimista) + marcar updatedBy/updatedAt
         set((state) => {
           const p = state.proyectos[ownerEmail]?.[proyectoId];
           if (!p) return state;
 
-          const origenList = p.tareas[from!].filter((t) => t.id !== tareaId);
           const tarea = p.tareas[from!].find((t) => t.id === tareaId);
           if (!tarea) return state;
 
-          const destinoList = [...p.tareas[destino], tarea];
+          const now = new Date().toISOString();
+          const origenList = p.tareas[from!].filter((t) => t.id !== tareaId);
+          const moved: Tarea = {
+            ...tarea,
+            updatedBy: actor || tarea.updatedBy || null,
+            updatedByName: tarea.updatedByName ?? null,
+            updatedAt: now,
+          };
+          const destinoList = [...p.tareas[destino], moved];
 
           return {
             proyectos: {
@@ -220,6 +262,7 @@ export const useTareasStore = create<TareasStore>()(
         if (!proyectoId.startsWith("temp-") && !tareaId.startsWith("temp-")) {
           (async () => {
             try {
+              // si tu endpoint devuelve la tarea, podrías re-sincronizarla aquí
               await api.moveTarea(proyectoId, { tareaId, from, to: destino });
             } catch (err) {
               console.warn("moveTarea (backend) falló, se mantiene estado local:", err);
@@ -239,19 +282,30 @@ export const useTareasStore = create<TareasStore>()(
         deadline,
         etiquetas
       ) => {
-        const email = get().usuarioActual;
+        const email = (get().usuarioActual ?? "").trim().toLowerCase();
         const loc = locateProyecto(get(), proyectoId);
         if (!loc) return;
         const { ownerEmail, proyecto } = loc;
         if (!canEditProyecto(email, proyecto)) return;
 
-        // Optimista
+        const now = new Date().toISOString();
+
+        // Optimista + marcar updatedBy/updatedAt
         set((state) => {
           const p = state.proyectos[ownerEmail]?.[proyectoId];
           if (!p) return state;
           const editadas = p.tareas[estado].map((t) =>
             t.id === tareaId
-              ? { ...t, titulo, descripcion, prioridad, deadline, etiquetas }
+              ? {
+                  ...t,
+                  titulo,
+                  descripcion,
+                  prioridad,
+                  deadline,
+                  etiquetas,
+                  updatedBy: email || t.updatedBy || null,
+                  updatedAt: now,
+                }
               : t
           );
           return {
@@ -278,6 +332,27 @@ export const useTareasStore = create<TareasStore>()(
             prioridad,
             deadline,
             etiquetas,
+          })
+          .then((resp) => {
+            if (!resp) return;
+            const updated = tareaFromApi(resp);
+            set((state) => {
+              const p = state.proyectos[ownerEmail]?.[proyectoId];
+              if (!p) return state;
+              const col = replaceTaskInColumn(p.tareas[estado], tareaId, () => updated);
+              return {
+                proyectos: {
+                  ...state.proyectos,
+                  [ownerEmail]: {
+                    ...state.proyectos[ownerEmail],
+                    [proyectoId]: {
+                      ...p,
+                      tareas: { ...p.tareas, [estado]: col },
+                    },
+                  },
+                },
+              };
+            });
           })
           .catch((e) => console.warn("updateTarea falló:", e));
       },

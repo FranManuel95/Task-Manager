@@ -10,6 +10,7 @@ import type {
 } from "../types/api";
 import type { ChatMessage } from "../types/chats";
 import type { Paginated } from "../types/common";
+import { ID } from '../types/common';
 
 export class ApiError extends Error {
   status: number;
@@ -130,6 +131,10 @@ export const api = {
       sender,
       text,
     }),
+
+  /** Auditoría */
+  getAudit: (proyectoId: string) =>
+    http.get<AuditItem[]>(`/api/proyectos/${encodeURIComponent(proyectoId)}/audit`),
 };
 
 // --- Auth ---
@@ -177,4 +182,39 @@ export const authApi = {
   logout: () => http.post<void>("/api/auth/logout"),
 };
 
+// --- al final de api.ts (o en una sección de tipos globales) ---
+
+export type AuditItem = {
+  id: string;
+  ts: string;
+  proyectoId: string;
+  entity: string;
+  entityId: string | null;
+  action: string;
+  actorEmail: string;
+  actorName?: string | null;
+  displayName?: string | null; // 👈 nuevo
+
+  // Estructura esperada de payload
+  payload?: {
+    entityName?: string | null;
+    before?: Record<string, any>;
+    after?: Record<string, any>;
+    diff?: Record<string, { before: any; after: any }>;
+  } | null;
+};
+
+
+export type AuditPage = {
+  items: AuditItem[];
+  nextCursor?: string | null;
+};
+
+export const audit = {
+  list: (proyectoId: string, params?: { limit?: number; cursor?: string }) =>
+    http.get<{ items: any[]; nextCursor: string | null }>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/audit`,
+      params as any
+    ),
+};
 

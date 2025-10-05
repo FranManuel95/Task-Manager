@@ -1,3 +1,4 @@
+// backend/src/routes/proyectos.ts
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { db } from "../db";
@@ -37,6 +38,36 @@ function parseDeadline(d: unknown): Date | null {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
+/* --- snapshots y diffs para logs --- */
+function tareaSnapshot(t: {
+  titulo: string;
+  descripcion: string | null;
+  prioridad: $Enums.Prioridad;
+  deadline: Date | null;
+  estado: $Enums.Estado;
+  etiquetas: string[] | null;
+}) {
+  return {
+    titulo: t.titulo,
+    descripcion: t.descripcion ?? "",
+    prioridad: t.prioridad,
+    deadline: t.deadline ? t.deadline.toISOString() : null,
+    estado: t.estado,
+    etiquetas: t.etiquetas ?? [],
+  };
+}
+
+function computeDiff(before: any, after: any) {
+  const out: Record<string, { before: any; after: any }> = {};
+  const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
+  for (const k of keys) {
+    const b = before?.[k];
+    const a = after?.[k];
+    if (JSON.stringify(b) !== JSON.stringify(a)) out[k] = { before: b, after: a };
+  }
+  return out;
+}
+
 /* ---- Unión discriminada para evitar el error en membership.code ---- */
 type Membership =
   | { ok: true; proj: { id: string; usuarios: string[] | null; creadoPor: string } }
@@ -50,6 +81,39 @@ async function ensureMember(proyectoId: string, email: string): Promise<Membersh
   if (!proj) return { ok: false, code: 404 } as const;
   if (!(proj.usuarios ?? []).includes(email)) return { ok: false, code: 403 } as const;
   return { ok: true, proj } as const;
+}
+
+/* ---------- Log de auditoría (silencioso si el modelo no existe) ---------- */
+async function auditLogSafe(params: {
+  proyectoId: string;
+  entity: "proyecto" | "tarea" | "chat" | string;
+  action: "create" | "update" | "delete" | "move" | "add-collaborator" | "remove-collaborator" | string;
+  actorEmail: string;
+  entityId?: string | null;
+  entityName?: string | null; // nombre legible (por ej. título de la tarea)
+  payload?: unknown;          // before/after/diff/otros
+}) {
+  try {
+    if (!db.auditLog) return;
+
+    const mergedPayload =
+      params.entityName || params.payload
+        ? { ...(params.payload as any), ...(params.entityName ? { entityName: params.entityName } : {}) }
+        : undefined;
+
+    await db.auditLog.create({
+      data: {
+        proyectoId: params.proyectoId,
+        entity: params.entity,
+        entityId: params.entityId ?? null,
+        action: params.action,
+        actorEmail: params.actorEmail,
+        payload: mergedPayload as any,
+      },
+    });
+  } catch (e) {
+    console.warn("auditLogSafe fallo:", e);
+  }
 }
 
 /* ------------- A PARTIR DE AQUÍ: RUTAS PROTEGIDAS ------------- */
@@ -92,7 +156,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Detalle (solo si soy colaborador)
+// Detalle (solo si soy colaborador) — incluye metadatos de tareas + nombres
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -117,12 +181,30 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
             deadline: true,
             etiquetas: true,
             estado: true,
+            createdBy: true,
+            updatedBy: true,
+            updatedAt: true,
           },
         },
       },
     });
 
     if (!p) return res.status(404).json({ error: "Proyecto no encontrado" });
+
+    // Resolver nombres de creadores/editores
+    const emailsSet = new Set<string>();
+    for (const t of p.tareas) {
+      if (t.createdBy) emailsSet.add(t.createdBy);
+      if (t.updatedBy) emailsSet.add(t.updatedBy);
+    }
+    const emails = Array.from(emailsSet);
+    const users = emails.length
+      ? await db.user.findMany({
+          where: { email: { in: emails } },
+          select: { email: true, name: true },
+        })
+      : [];
+    const nameByEmail = Object.fromEntries(users.map((u) => [u.email, u.name]));
 
     const tareas = {
       "por-hacer": [] as any[],
@@ -145,6 +227,11 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
         prioridad: t.prioridad,
         deadline: t.deadline ? t.deadline.toISOString() : null,
         etiquetas: t.etiquetas ?? [],
+        createdBy: t.createdBy ?? null,
+        createdByName: t.createdBy ? nameByEmail[t.createdBy] ?? null : null,
+        updatedBy: t.updatedBy ?? null,
+        updatedByName: t.updatedBy ? nameByEmail[t.updatedBy] ?? null : null,
+        updatedAt: t.updatedAt ? t.updatedAt.toISOString() : null,
       });
     }
 
@@ -204,6 +291,16 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
     });
 
+    // log
+    auditLogSafe({
+      proyectoId: created.id,
+      entity: "proyecto",
+      entityId: created.id,
+      action: "create",
+      actorEmail: email,
+      payload: { nombre, color, deadline },
+    });
+
     res.status(201).json({
       id: created.id,
       nombre: created.nombre,
@@ -249,6 +346,16 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
       },
     });
 
+    // log
+    auditLogSafe({
+      proyectoId: id,
+      entity: "proyecto",
+      entityId: id,
+      action: "update",
+      actorEmail: email,
+      payload: body,
+    });
+
     res.json({
       id: updated.id,
       nombre: updated.nombre,
@@ -263,7 +370,7 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-// Eliminar — solo el creador; borra tareas y chat (como ya hacías)
+// Eliminar — solo el creador; borra tareas y chat
 router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -285,6 +392,15 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
       db.chatMessage.deleteMany({ where: { proyectoId: id } }),
       db.proyecto.delete({ where: { id } }),
     ]);
+
+    // log
+    auditLogSafe({
+      proyectoId: id,
+      entity: "proyecto",
+      entityId: id,
+      action: "delete",
+      actorEmail: email,
+    });
 
     res.status(204).end();
   } catch (e: any) {
@@ -326,6 +442,16 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
       data: { usuarios: { push: toAdd } },
     });
 
+    // log
+    auditLogSafe({
+      proyectoId: id,
+      entity: "proyecto",
+      entityId: id,
+      action: "add-collaborator",
+      actorEmail: email,
+      payload: { collaborator: toAdd },
+    });
+
     res.status(204).end();
   } catch (e) {
     next(e);
@@ -356,6 +482,16 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
     await db.proyecto.update({
       where: { id },
       data: { usuarios: { set: next } },
+    });
+
+    // log
+    auditLogSafe({
+      proyectoId: id,
+      entity: "proyecto",
+      entityId: id,
+      action: "remove-collaborator",
+      actorEmail: email,
+      payload: { collaborator: target },
     });
 
     res.status(204).end();
@@ -393,6 +529,8 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
         deadline: parseDeadline(body.deadline),
         etiquetas: Array.isArray(body.etiquetas) ? (body.etiquetas as string[]) : [],
         estado: dbEstado,
+        createdBy: email,
+        updatedBy: email,
       },
       select: {
         id: true,
@@ -402,6 +540,28 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
         deadline: true,
         etiquetas: true,
         estado: true,
+        createdBy: true,
+        updatedBy: true,
+      },
+    });
+
+    // Log con snapshot AFTER y nombre visible (entityName)
+    auditLogSafe({
+      proyectoId,
+      entity: "tarea",
+      entityId: created.id,
+      entityName: created.titulo,
+      action: "create",
+      actorEmail: email,
+      payload: {
+        after: {
+          titulo: created.titulo,
+          descripcion: created.descripcion ?? "",
+          prioridad: created.prioridad,
+          deadline: created.deadline ? created.deadline.toISOString() : null,
+          estado: created.estado,
+          etiquetas: created.etiquetas ?? [],
+        },
       },
     });
 
@@ -412,6 +572,8 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
       prioridad: created.prioridad,
       deadline: created.deadline ? created.deadline.toISOString() : null,
       etiquetas: created.etiquetas ?? [],
+      createdBy: created.createdBy ?? null,
+      updatedBy: created.updatedBy ?? null,
       estado:
         created.estado === "por_hacer"
           ? "por-hacer"
@@ -424,7 +586,7 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Editar tarea — solo si soy colaborador
+// Editar tarea — solo si soy colaborador (guarda BEFORE/AFTER + DIFF)
 router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -433,16 +595,29 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
     const membership = await ensureMember(proyectoId, email);
     if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
+    // BEFORE
+    const beforeRow = await db.tarea.findUnique({
+      where: { id: tareaId },
+      select: {
+        titulo: true,
+        descripcion: true,
+        prioridad: true,
+        deadline: true,
+        estado: true,
+        etiquetas: true,
+      },
+    });
+    if (!beforeRow) return res.status(404).json({ error: "Tarea no encontrada" });
+    const before = tareaSnapshot(beforeRow);
+
     const body = req.body ?? {};
     const data: Prisma.TareaUpdateInput = {};
-
     if (typeof body.titulo === "string") data.titulo = body.titulo;
     if (typeof body.descripcion === "string") data.descripcion = body.descripcion;
-    if (typeof body.prioridad !== "undefined") {
-      data.prioridad = toDbPrioridadFlexible(body.prioridad);
-    }
+    if (typeof body.prioridad !== "undefined") data.prioridad = toDbPrioridadFlexible(body.prioridad);
     if (body.deadline !== undefined) data.deadline = parseDeadline(body.deadline);
     if (Array.isArray(body.etiquetas)) data.etiquetas = body.etiquetas as string[];
+    (data as any).updatedBy = email;
 
     const updated = await db.tarea.update({
       where: { id: tareaId },
@@ -455,7 +630,30 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
         deadline: true,
         etiquetas: true,
         estado: true,
+        createdBy: true,
+        updatedBy: true,
       },
+    });
+
+    // AFTER + DIFF
+    const after = {
+      titulo: updated.titulo,
+      descripcion: updated.descripcion ?? "",
+      prioridad: updated.prioridad,
+      deadline: updated.deadline ? updated.deadline.toISOString() : null,
+      estado: updated.estado,
+      etiquetas: updated.etiquetas ?? [],
+    };
+    const diff = computeDiff(before, after);
+
+    auditLogSafe({
+      proyectoId,
+      entity: "tarea",
+      entityId: updated.id,
+      entityName: updated.titulo,
+      action: "update",
+      actorEmail: email,
+      payload: { before, after, diff },
     });
 
     res.json({
@@ -465,6 +663,8 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
       prioridad: updated.prioridad,
       deadline: updated.deadline ? updated.deadline.toISOString() : null,
       etiquetas: updated.etiquetas ?? [],
+      createdBy: updated.createdBy ?? null,
+      updatedBy: updated.updatedBy ?? null,
       estado:
         updated.estado === "por_hacer"
           ? "por-hacer"
@@ -477,7 +677,7 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
   }
 });
 
-// Mover tarea — solo si soy colaborador
+// Mover tarea — solo si soy colaborador (guarda BEFORE/AFTER + DIFF, entityName)
 router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -493,10 +693,38 @@ router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFu
     const dbTo = toDbEstadoFlexible(rawTo);
     if (!dbTo) return res.status(400).json({ error: "destino inválido" });
 
+    // BEFORE (obtenemos título también para entityName)
+    const beforeRow = await db.tarea.findUnique({
+      where: { id: String(tareaId) },
+      select: { titulo: true, descripcion: true, prioridad: true, deadline: true, estado: true, etiquetas: true },
+    });
+    if (!beforeRow) return res.status(404).json({ error: "Tarea no encontrada" });
+    const before = tareaSnapshot(beforeRow);
+
     const updated = await db.tarea.update({
       where: { id: String(tareaId) },
-      data: { estado: dbTo },
-      select: { id: true },
+      data: { estado: dbTo, updatedBy: email },
+      select: { id: true, estado: true, titulo: true, descripcion: true, prioridad: true, deadline: true, etiquetas: true },
+    });
+
+    const after = {
+      titulo: updated.titulo,
+      descripcion: updated.descripcion ?? "",
+      prioridad: updated.prioridad,
+      deadline: updated.deadline ? updated.deadline.toISOString() : null,
+      estado: updated.estado,
+      etiquetas: updated.etiquetas ?? [],
+    };
+    const diff = computeDiff(before, after);
+
+    auditLogSafe({
+      proyectoId,
+      entity: "tarea",
+      entityId: String(tareaId),
+      entityName: updated.titulo,
+      action: "move",
+      actorEmail: email,
+      payload: { before, after, diff },
     });
 
     res.json({ ok: true, id: updated.id });
@@ -505,7 +733,7 @@ router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFu
   }
 });
 
-// Eliminar tarea — solo si soy colaborador
+// Eliminar tarea — solo si soy colaborador (guarda BEFORE + entityName)
 router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -514,6 +742,13 @@ router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: 
     const membership = await ensureMember(proyectoId, email);
     if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
+    // BEFORE para payload y nombre visible
+    const beforeRow = await db.tarea.findFirst({
+      where: { id: tareaId, proyectoId },
+      select: { titulo: true, descripcion: true, prioridad: true, deadline: true, estado: true, etiquetas: true },
+    });
+    const before = beforeRow ? tareaSnapshot(beforeRow) : null;
+
     const result = await db.tarea.deleteMany({
       where: { id: tareaId, proyectoId },
     });
@@ -521,6 +756,17 @@ router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: 
     if (result.count === 0) {
       return res.status(404).json({ error: "Tarea no encontrada" });
     }
+
+    // log
+    auditLogSafe({
+      proyectoId,
+      entity: "tarea",
+      entityId: tareaId,
+      entityName: beforeRow?.titulo ?? null,
+      action: "delete",
+      actorEmail: email,
+      payload: { before },
+    });
 
     res.status(204).end();
   } catch (e) {
@@ -594,6 +840,94 @@ router.post("/:id/chat", async (req: Request, res: Response, next: NextFunction)
       sender: created.sender,
       text: created.text,
       ts: new Date(tsAny).toISOString(),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/* ---------------- Audit / actividad del proyecto ---------------- */
+
+// Paginado por cursor: ?limit=50&cursor=<id>
+router.get("/:id/audit", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const email = req.authUser!.email;
+    const { id: proyectoId } = req.params;
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
+    const limitRaw = Number(req.query.limit ?? 50);
+    const limit = Math.max(1, Math.min(limitRaw, 100));
+    const cursor = req.query.cursor ? String(req.query.cursor) : null;
+
+    if (!db.auditLog) return res.json({ items: [], nextCursor: null });
+
+    const rows = await db.auditLog.findMany({
+      where: { proyectoId },
+      orderBy: { createdAt: "desc" },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        createdAt: true,
+        proyectoId: true,
+        entity: true,
+        entityId: true,
+        action: true,
+        actorEmail: true,
+        payload: true,
+      },
+    });
+
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+
+    // Enriquecer con nombre del actor
+    const emails = Array.from(new Set(items.map((r) => r.actorEmail).filter(Boolean)));
+    const users = emails.length
+      ? await db.user.findMany({
+          where: { email: { in: emails } },
+          select: { email: true, name: true },
+        })
+      : [];
+    const nameByEmail = Object.fromEntries(users.map((u) => [u.email, u.name]));
+
+    // Resolver displayName (preferimos payload.entityName; si falta y es tarea, miramos DB)
+    const needTitle = items.filter(
+      (r) => r.entity === "tarea" && r.entityId && !(r.payload as any)?.entityName
+    );
+    let titleById: Record<string, string> = {};
+    if (needTitle.length) {
+      const ids = Array.from(new Set(needTitle.map((r) => r.entityId!)));
+      const ts = await db.tarea.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, titulo: true },
+      });
+      titleById = Object.fromEntries(ts.map((t) => [t.id, t.titulo]));
+    }
+
+    res.json({
+      items: items.map((r) => {
+        const pld = r.payload as any;
+        const displayName =
+          pld?.entityName ??
+          (r.entity === "tarea" && r.entityId ? titleById[r.entityId] ?? null : null);
+
+        return {
+          id: r.id,
+          ts: r.createdAt.toISOString(),
+          proyectoId: r.proyectoId,
+          entity: r.entity,
+          entityId: r.entityId,
+          action: r.action,
+          actorEmail: r.actorEmail,
+          actorName: nameByEmail[r.actorEmail] ?? null,
+          displayName,
+          payload: pld,
+        };
+      }),
+      nextCursor: hasMore ? items[items.length - 1].id : null,
     });
   } catch (e) {
     next(e);
