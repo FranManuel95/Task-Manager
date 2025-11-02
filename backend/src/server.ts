@@ -6,6 +6,7 @@ import proyectosRouter from "./routes/proyectos";
 import authRouter from "./routes/auth";
 import { Prisma } from "@prisma/client";
 
+
 const app = express();
 
 // CORS primero (permite credenciales)

@@ -83,25 +83,32 @@ async function ensureMember(proyectoId: string, email: string): Promise<Membersh
   return { ok: true, proj } as const;
 }
 
-/* ---------- Log de auditoría (silencioso si el modelo no existe) ---------- */
+/* ---------- Log de auditoría (seguro) ---------- */
 async function auditLogSafe(params: {
   proyectoId: string;
   entity: "proyecto" | "tarea" | "chat" | string;
-  action: "create" | "update" | "delete" | "move" | "add-collaborator" | "remove-collaborator" | string;
+  action:
+    | "create"
+    | "update"
+    | "delete"
+    | "move"
+    | "add-collaborator"
+    | "remove-collaborator"
+    | string;
   actorEmail: string;
   entityId?: string | null;
-  entityName?: string | null; // nombre legible (por ej. título de la tarea)
-  payload?: unknown;          // before/after/diff/otros
+  entityName?: string | null;
+  payload?: unknown;
 }) {
   try {
-    if (!db.auditLog) return;
+    if (!(db as any).auditLog) return;
 
     const mergedPayload =
       params.entityName || params.payload
         ? { ...(params.payload as any), ...(params.entityName ? { entityName: params.entityName } : {}) }
         : undefined;
 
-    await db.auditLog.create({
+    await (db as any).auditLog.create({
       data: {
         proyectoId: params.proyectoId,
         entity: params.entity,
@@ -121,10 +128,9 @@ router.use(requireAuthUser);
 
 /* ---------------- Proyectos ---------------- */
 
-// Lista (solo proyectos donde soy colaborador)
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const proyectos = await db.proyecto.findMany({
       where: { usuarios: { has: email } },
       select: {
@@ -136,7 +142,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
         creadoPor: true,
         usuarios: true,
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "asc" }, // o { id: "asc" }
     });
 
     const items = proyectos.map((p) => ({
@@ -156,10 +162,9 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Detalle (solo si soy colaborador) — incluye metadatos de tareas + nombres
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id } = req.params;
 
     const p = await db.proyecto.findFirst({
@@ -191,7 +196,6 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
 
     if (!p) return res.status(404).json({ error: "Proyecto no encontrado" });
 
-    // Resolver nombres de creadores/editores
     const emailsSet = new Set<string>();
     for (const t of p.tareas) {
       if (t.createdBy) emailsSet.add(t.createdBy);
@@ -200,7 +204,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
     const emails = Array.from(emailsSet);
     const users = emails.length
       ? await db.user.findMany({
-          where: { email: { in: emails } },
+          where: { email: { in: emails as string[] } },
           select: { email: true, name: true },
         })
       : [];
@@ -209,7 +213,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
     const tareas = {
       "por-hacer": [] as any[],
       "en-progreso": [] as any[],
-      "completado": [] as any[],
+      completado: [] as any[],
     };
 
     for (const t of p.tareas) {
@@ -250,10 +254,9 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Crear — creadoPor = usuario en sesión; me aseguro de estar en usuarios
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const body = req.body ?? {};
     const nombre = String(body.nombre ?? "").trim();
     const descripcion = String(body.descripcion ?? "");
@@ -291,7 +294,6 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
     });
 
-    // log
     auditLogSafe({
       proyectoId: created.id,
       entity: "proyecto",
@@ -316,10 +318,9 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Editar — solo si soy colaborador
 router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id } = req.params;
 
     const membership = await ensureMember(id, email);
@@ -346,7 +347,6 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
       },
     });
 
-    // log
     auditLogSafe({
       proyectoId: id,
       entity: "proyecto",
@@ -370,10 +370,9 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-// Eliminar — solo el creador; borra tareas y chat
 router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id } = req.params;
 
     if (id.startsWith("temp-")) {
@@ -390,10 +389,10 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
     await db.$transaction([
       db.tarea.deleteMany({ where: { proyectoId: id } }),
       db.chatMessage.deleteMany({ where: { proyectoId: id } }),
+      db.chatThread.deleteMany({ where: { proyectoId: id } }),
       db.proyecto.delete({ where: { id } }),
     ]);
 
-    // log
     auditLogSafe({
       proyectoId: id,
       entity: "proyecto",
@@ -413,10 +412,9 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
 
 /* ---------------- Colaboradores ---------------- */
 
-// Añadir colaborador — solo el creador
 router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id } = req.params;
     const usuarioRaw = req.body?.usuario;
 
@@ -442,7 +440,6 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
       data: { usuarios: { push: toAdd } },
     });
 
-    // log
     auditLogSafe({
       proyectoId: id,
       entity: "proyecto",
@@ -458,10 +455,9 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// Quitar colaborador — solo el creador
 router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id } = req.params;
     const target = decodeURIComponent(String(req.params.email || "")).trim().toLowerCase();
     if (!target) return res.status(400).json({ error: "email inválido" });
@@ -484,7 +480,6 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
       data: { usuarios: { set: next } },
     });
 
-    // log
     auditLogSafe({
       proyectoId: id,
       entity: "proyecto",
@@ -502,10 +497,9 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
 
 /* ---------------- Tareas ---------------- */
 
-// Crear tarea — solo si soy colaborador
 router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id: proyectoId } = req.params;
 
     const membership = await ensureMember(proyectoId, email);
@@ -545,7 +539,6 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
       },
     });
 
-    // Log con snapshot AFTER y nombre visible (entityName)
     auditLogSafe({
       proyectoId,
       entity: "tarea",
@@ -586,16 +579,14 @@ router.post("/:id/tareas", async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Editar tarea — solo si soy colaborador (guarda BEFORE/AFTER + DIFF)
 router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id: proyectoId, tareaId } = req.params;
 
     const membership = await ensureMember(proyectoId, email);
     if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
-    // BEFORE
     const beforeRow = await db.tarea.findUnique({
       where: { id: tareaId },
       select: {
@@ -635,7 +626,6 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
       },
     });
 
-    // AFTER + DIFF
     const after = {
       titulo: updated.titulo,
       descripcion: updated.descripcion ?? "",
@@ -677,10 +667,9 @@ router.patch("/:id/tareas/:tareaId", async (req: Request, res: Response, next: N
   }
 });
 
-// Mover tarea — solo si soy colaborador (guarda BEFORE/AFTER + DIFF, entityName)
 router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id: proyectoId } = req.params;
 
     const membership = await ensureMember(proyectoId, email);
@@ -693,7 +682,6 @@ router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFu
     const dbTo = toDbEstadoFlexible(rawTo);
     if (!dbTo) return res.status(400).json({ error: "destino inválido" });
 
-    // BEFORE (obtenemos título también para entityName)
     const beforeRow = await db.tarea.findUnique({
       where: { id: String(tareaId) },
       select: { titulo: true, descripcion: true, prioridad: true, deadline: true, estado: true, etiquetas: true },
@@ -733,16 +721,14 @@ router.post("/:id/tareas/move", async (req: Request, res: Response, next: NextFu
   }
 });
 
-// Eliminar tarea — solo si soy colaborador (guarda BEFORE + entityName)
 router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id: proyectoId, tareaId } = req.params;
 
     const membership = await ensureMember(proyectoId, email);
     if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
-    // BEFORE para payload y nombre visible
     const beforeRow = await db.tarea.findFirst({
       where: { id: tareaId, proyectoId },
       select: { titulo: true, descripcion: true, prioridad: true, deadline: true, estado: true, etiquetas: true },
@@ -757,7 +743,6 @@ router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: 
       return res.status(404).json({ error: "Tarea no encontrada" });
     }
 
-    // log
     auditLogSafe({
       proyectoId,
       entity: "tarea",
@@ -774,8 +759,9 @@ router.delete("/:id/tareas/:tareaId", async (req: Request, res: Response, next: 
   }
 });
 
-/* ---------------- Chat ---------------- */
+/* ---------------- Chat (general por proyecto) ---------------- */
 
+// GET /api/proyectos/:id/chat  -> SOLO canal general (threadId NULL)
 router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -786,24 +772,21 @@ router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) 
 
     try {
       const rows = await db.chatMessage.findMany({
-        where: { proyectoId },
-        orderBy: { id: "asc" },
+        where: { proyectoId, threadId: null },
+        orderBy: { createdAt: "asc" },
       });
 
-      const out = rows.map((m) => {
-        const tsAny = (m as any).createdAt ?? (m as any).ts ?? new Date();
-        return {
-          id: m.id,
-          proyectoId: m.proyectoId,
-          sender: m.sender,
-          text: m.text,
-          ts: new Date(tsAny).toISOString(),
-        };
-      });
+      const out = rows.map((m) => ({
+        id: m.id,
+        proyectoId: m.proyectoId,
+        sender: m.sender,
+        text: m.text,
+        createdAt: m.createdAt.toISOString(),
+      }));
 
       res.json(out);
     } catch (err: any) {
-      if (err?.code === "P2021") return res.json([]);
+      if (err?.code === "P2021") return res.json([]); // tabla no existe -> vacío
       throw err;
     }
   } catch (e) {
@@ -811,6 +794,7 @@ router.get("/:id/chat", async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+// POST /api/proyectos/:id/chat  -> fuerza threadId NULL (canal general)
 router.post("/:id/chat", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const email = req.authUser!.email;
@@ -827,31 +811,27 @@ router.post("/:id/chat", async (req: Request, res: Response, next: NextFunction)
     const created = await db.chatMessage.create({
       data: {
         proyectoId,
+        threadId: null, // 🔒 asegurar que va al canal general
         sender: String(sender).trim().toLowerCase(),
         text: String(text),
       },
     });
-
-    const tsAny = (created as any).createdAt ?? (created as any).ts ?? new Date();
 
     res.status(201).json({
       id: created.id,
       proyectoId: created.proyectoId,
       sender: created.sender,
       text: created.text,
-      ts: new Date(tsAny).toISOString(),
+      createdAt: created.createdAt.toISOString(),
     });
   } catch (e) {
     next(e);
   }
 });
 
-/* ---------------- Audit / actividad del proyecto ---------------- */
-
-// Paginado por cursor: ?limit=50&cursor=<id>
 router.get("/:id/audit", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const email = req.authUser!.email;
+    const email = req.authUser!.email.toLowerCase();
     const { id: proyectoId } = req.params;
 
     const membership = await ensureMember(proyectoId, email);
@@ -861,77 +841,294 @@ router.get("/:id/audit", async (req: Request, res: Response, next: NextFunction)
     const limit = Math.max(1, Math.min(limitRaw, 100));
     const cursor = req.query.cursor ? String(req.query.cursor) : null;
 
-    if (!db.auditLog) return res.json({ items: [], nextCursor: null });
+    if (!(db as any).auditLog) return res.json({ items: [], nextCursor: null });
 
-    const rows = await db.auditLog.findMany({
-      where: { proyectoId },
-      orderBy: { createdAt: "desc" },
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: {
-        id: true,
-        createdAt: true,
-        proyectoId: true,
-        entity: true,
-        entityId: true,
-        action: true,
-        actorEmail: true,
-        payload: true,
-      },
-    });
-
-    const hasMore = rows.length > limit;
-    const items = hasMore ? rows.slice(0, limit) : rows;
-
-    // Enriquecer con nombre del actor
-    const emails = Array.from(new Set(items.map((r) => r.actorEmail).filter(Boolean)));
-    const users = emails.length
-      ? await db.user.findMany({
-          where: { email: { in: emails } },
-          select: { email: true, name: true },
-        })
-      : [];
-    const nameByEmail = Object.fromEntries(users.map((u) => [u.email, u.name]));
-
-    // Resolver displayName (preferimos payload.entityName; si falta y es tarea, miramos DB)
-    const needTitle = items.filter(
-      (r) => r.entity === "tarea" && r.entityId && !(r.payload as any)?.entityName
-    );
-    let titleById: Record<string, string> = {};
-    if (needTitle.length) {
-      const ids = Array.from(new Set(needTitle.map((r) => r.entityId!)));
-      const ts = await db.tarea.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, titulo: true },
+    try {
+      const rows = await (db as any).auditLog.findMany({
+        where: { proyectoId },
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: {
+          id: true,
+          createdAt: true,
+          proyectoId: true,
+          entity: true,
+          entityId: true,
+          action: true,
+          actorEmail: true,
+          payload: true,
+        },
       });
-      titleById = Object.fromEntries(ts.map((t) => [t.id, t.titulo]));
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+
+      const emails: string[] = Array.from(
+        new Set<string>(items.map((r: any) => String(r.actorEmail ?? "")).filter(Boolean))
+      );
+      const users = emails.length
+        ? await db.user.findMany({
+            where: { email: { in: emails } },
+            select: { email: true, name: true },
+          })
+        : [];
+      const nameByEmail = Object.fromEntries(users.map((u) => [u.email, u.name]));
+
+      const needTitle = items.filter(
+        (r: any) => r.entity === "tarea" && r.entityId && !(r.payload as any)?.entityName
+      );
+      let titleById: Record<string, string> = {};
+      if (needTitle.length) {
+        const ids: string[] = Array.from(new Set(needTitle.map((r: any) => String(r.entityId))));
+        const tareasRows = await db.tarea.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, titulo: true },
+        });
+        titleById = Object.fromEntries(tareasRows.map((t) => [t.id, t.titulo]));
+      }
+
+      res.json({
+        items: items.map((r: any) => {
+          const pld = r.payload as any;
+          const displayName =
+            pld?.entityName ??
+            (r.entity === "tarea" && r.entityId ? titleById[String(r.entityId)] ?? null : null);
+
+          return {
+            id: r.id,
+            createdAt: r.createdAt.toISOString(),
+            proyectoId: r.proyectoId,
+            entity: r.entity,
+            entityId: r.entityId,
+            action: r.action,
+            actorEmail: r.actorEmail,
+            actorName: nameByEmail[r.actorEmail] ?? null,
+            displayName,
+            payload: pld,
+          };
+        }),
+        nextCursor: hasMore ? items[items.length - 1].id : null,
+      });
+    } catch (err: any) {
+      if (err?.code === "P2021") {
+        return res.json({ items: [], nextCursor: null });
+      }
+      throw err;
     }
-
-    res.json({
-      items: items.map((r) => {
-        const pld = r.payload as any;
-        const displayName =
-          pld?.entityName ??
-          (r.entity === "tarea" && r.entityId ? titleById[r.entityId] ?? null : null);
-
-        return {
-          id: r.id,
-          ts: r.createdAt.toISOString(),
-          proyectoId: r.proyectoId,
-          entity: r.entity,
-          entityId: r.entityId,
-          action: r.action,
-          actorEmail: r.actorEmail,
-          actorName: nameByEmail[r.actorEmail] ?? null,
-          displayName,
-          payload: pld,
-        };
-      }),
-      nextCursor: hasMore ? items[items.length - 1].id : null,
-    });
   } catch (e) {
     next(e);
   }
+});
+
+/* ---------------- Chat Threads (privados) ---------------- */
+
+/**
+ * Admite 3 formatos de "thread id":
+ *  - UUID real de ChatThread.id
+ *  - "dm::<email1>::<email2>"
+ *  - "<proyectoId>::dm::<email1>::<email2>"
+ *
+ * Devuelve un ChatThread.id real (creándolo si hace falta).
+ */
+async function resolveThreadId(
+  proyectoId: string,
+  rawThreadId: string,
+  meEmail: string
+): Promise<string> {
+  const raw = decodeURIComponent(String(rawThreadId || "").trim());
+
+  // 1) ¿Es un UUID/ID real?
+  try {
+    const byId = await db.chatThread.findUnique({ where: { id: raw } });
+    if (byId) return byId.id;
+  } catch {
+    // ignoramos error y probamos formato virtual
+  }
+
+  // 2) ¿Es un ID "virtual" de DM?
+  //    Aceptamos "dm::a@x::b@y" o "<proyectoId>::dm::a@x::b@y"
+  const m = raw.match(/(?:^|::)dm::([^:]+)::([^:]+)$/i);
+  if (!m) {
+    const err: any = new Error("THREAD_NOT_FOUND");
+    err.code = "THREAD_NOT_FOUND";
+    throw err;
+  }
+
+  // Normalizar participantes
+  const e1 = String(m[1]).trim().toLowerCase();
+  const e2 = String(m[2]).trim().toLowerCase();
+  const participants = Array.from(new Set([e1, e2])).sort();
+
+  // 3) Seguridad: ambos deben pertenecer al proyecto
+  const proj = await db.proyecto.findUnique({
+    where: { id: proyectoId },
+    select: { usuarios: true },
+  });
+  const usuarios = proj?.usuarios ?? [];
+  const allInProject = participants.every((p) => usuarios.includes(p));
+  if (!allInProject) {
+    const err: any = new Error("Forbidden");
+    err.status = 403;
+    throw err;
+  }
+
+  // 4) Buscar/crear el hilo privado
+  let thread = await db.chatThread.findFirst({
+    where: {
+      proyectoId,
+      isPrivate: true,
+      participants: { hasEvery: participants },
+    },
+  });
+
+  if (!thread) {
+    thread = await db.chatThread.create({
+      data: {
+        proyectoId,
+        isPrivate: true,
+        participants,
+      },
+    });
+  }
+
+  return thread.id;
+}
+
+// Obtener o crear un hilo privado entre dos usuarios
+router.get("/:id/chat/thread/:targetEmail", async (req, res, next) => {
+  try {
+    const { id: proyectoId, targetEmail } = req.params;
+    const email = req.authUser!.email.toLowerCase();
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
+    const other = String(targetEmail || "").trim().toLowerCase();
+    if (!other) return res.status(400).json({ error: "Email destino requerido" });
+
+    // Ambos deben ser miembros
+    const proj = await db.proyecto.findUnique({ where: { id: proyectoId }, select: { usuarios: true } });
+    const usuarios = proj?.usuarios ?? [];
+    if (!usuarios.includes(other)) return res.status(403).json({ error: "Forbidden" });
+
+    let thread = await db.chatThread.findFirst({
+      where: {
+        proyectoId,
+        isPrivate: true,
+        participants: { hasEvery: [email, other] },
+      },
+    });
+
+    if (!thread) {
+      thread = await db.chatThread.create({
+        data: {
+          proyectoId,
+          isPrivate: true,
+          participants: [email, other].sort(),
+        },
+      });
+    }
+
+    res.json(thread);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Obtener mensajes de un hilo (acepta id real o "virtual" dm::a::b)
+router.get("/:id/chat/thread/:threadId/messages", async (req, res, next) => {
+  try {
+    const { id: proyectoId, threadId } = req.params;
+    const email = req.authUser!.email.toLowerCase();
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
+    const realId = await resolveThreadId(proyectoId, threadId, email);
+
+    const msgs = await db.chatMessage.findMany({
+      where: { proyectoId, threadId: realId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    res.json(
+      msgs.map((m) => ({
+        id: m.id,
+        proyectoId: m.proyectoId,
+        sender: m.sender,
+        text: m.text,
+        ts: m.createdAt.toISOString(),
+      }))
+    );
+  } catch (e: any) {
+    if (e?.code === "THREAD_NOT_FOUND") {
+      return res.status(404).json({ error: "Thread no encontrado" });
+    }
+    if (e?.status) {
+      return res.status(e.status).json({ error: e.message || "Forbidden" });
+    }
+    next(e);
+  }
+});
+
+// Enviar mensaje a un hilo (acepta id real o "virtual" dm::a::b)
+router.post("/:id/chat/thread/:threadId/messages", async (req, res, next) => {
+  try {
+    const { id: proyectoId, threadId } = req.params;
+    const email = req.authUser!.email.toLowerCase();
+    const { text } = req.body ?? {};
+
+    const membership = await ensureMember(proyectoId, email);
+    if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: "Texto requerido" });
+    }
+
+    const realId = await resolveThreadId(proyectoId, threadId, email);
+
+    const created = await db.chatMessage.create({
+      data: {
+        proyectoId,
+        threadId: realId,
+        sender: email,
+        text: text.trim(),
+      },
+    });
+
+    res.status(201).json({
+      id: created.id,
+      proyectoId: created.proyectoId,
+      sender: created.sender,
+      text: created.text,
+      createdAt: created.createdAt.toISOString(),
+    });
+  } catch (e: any) {
+    if (e?.code === "THREAD_NOT_FOUND") {
+      return res.status(404).json({ error: "Thread no encontrado" });
+    }
+    if (e?.status) {
+      return res.status(e.status).json({ error: e.message || "Forbidden" });
+    }
+    next(e);
+  }
+});
+
+/* --------- Alias para cuadrar con /chat/threads/:threadId --------- */
+
+router.get("/:id/chat/threads/:threadId", async (req, res, next) => {
+  (req as any).params.threadId = req.params.threadId;
+  (req as any).method = "GET";
+  (req as any).url = `/${req.params.id}/chat/thread/${req.params.threadId}/messages`;
+  return (router as any).handle(req, res, next);
+});
+
+router.post("/:id/chat/threads/:threadId", async (req, res, next) => {
+  (req as any).params.threadId = req.params.threadId;
+  (req as any).method = "POST";
+  (req as any).url = `/${req.params.id}/chat/thread/${req.params.threadId}/messages`;
+  return (router as any).handle(req, res, next);
 });
 
 export default router;

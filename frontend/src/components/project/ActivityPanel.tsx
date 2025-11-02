@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { audit, type AuditItem } from "../../services/api";
-import { parseISO, format } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { safeParseDate } from "../../lib/date";
 
-// Etiquetas legibles para cada campo del diff/snapshot
 const FIELD_LABELS: Record<string, string> = {
   titulo: "título",
   descripcion: "descripción",
@@ -13,7 +13,6 @@ const FIELD_LABELS: Record<string, string> = {
   etiquetas: "etiquetas",
 };
 
-// Normaliza valores para mostrarlos (texto, fecha, arrays…)
 function fmt(val: any): string {
   if (val == null) return "—";
   if (Array.isArray(val)) return val.join(", ");
@@ -22,15 +21,12 @@ function fmt(val: any): string {
   return String(val);
 }
 
-// Título del evento (acción + entidad + nombre visible si hay)
 function makeTitle(item: AuditItem) {
   const name =
     item.displayName ||
     (item.payload && (item.payload as any).entityName) ||
     item.entityId ||
     "—";
-
-  // Mensajes más humanos por tipo de acción:
   switch (item.action) {
     case "create":
       return `Creación de ${item.entity} · ${name}`;
@@ -45,38 +41,45 @@ function makeTitle(item: AuditItem) {
   }
 }
 
-function DiffView({ item }: { item: AuditItem }) {
-  const when = format(parseISO(item.ts), "dd MMM yyyy HH:mm", { locale: es });
-  const actor = item.actorName || item.actorEmail;
+function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
+  // Fallback: algunos backends devuelven createdAt en lugar de ts
+  const tsStr =
+    (item as any).ts ??
+    (item as any).createdAt ??
+    (item as any).created_at ??
+    null;
 
-  const payload = (item.payload || {}) as any;
-  const diff = payload.diff as Record<string, { before: any; after: any }> | undefined;
-  const before = payload.before;
-  const after = payload.after;
+  const d = safeParseDate(tsStr);
+  const when = d ? format(d, "dd MMM yyyy HH:mm", { locale: es }) : "—";
 
-  // Decide líneas a mostrar según la acción
-  let rows: Array<{ label: string; before?: any; after?: any; type: "update" | "create" | "delete" }> =
-    [];
+  const actor = item.actorName || item.actorEmail || "—";
+  const payload = ((item as any).payload ?? {}) as any;
 
-  if (item.action === "update" || item.action === "move") {
-    // Mostrar sólo campos que cambiaron
-    if (diff && Object.keys(diff).length > 0) {
-      rows = Object.entries(diff).map(([k, v]) => ({
-        label: FIELD_LABELS[k] || k,
-        before: v.before,
-        after: v.after,
-        type: "update" as const,
-      }));
-    }
+  const isPlainObject = (o: any) =>
+    o && typeof o === "object" && !Array.isArray(o);
+
+  const diff: Record<string, { before: any; after: any }> | undefined =
+    isPlainObject(payload.diff) ? (payload.diff as any) : undefined;
+
+  const before = isPlainObject(payload.before) ? payload.before : undefined;
+  const after = isPlainObject(payload.after) ? payload.after : undefined;
+
+  let rows: Array<{ label: string; before?: any; after?: any; type: "update" | "create" | "delete" }> = [];
+
+  if ((item.action === "update" || item.action === "move") && diff && Object.keys(diff).length > 0) {
+    rows = Object.entries(diff).map(([k, v]) => ({
+      label: FIELD_LABELS[k] || k,
+      before: (v as any).before,
+      after: (v as any).after,
+      type: "update" as const,
+    }));
   } else if (item.action === "create" && after) {
-    // Para creaciones: enseñamos los campos iniciales (después)
     rows = Object.entries(after).map(([k, v]) => ({
       label: FIELD_LABELS[k] || k,
       after: v,
       type: "create" as const,
     }));
   } else if (item.action === "delete" && before) {
-    // Para eliminaciones: enseñamos cómo estaba (antes)
     rows = Object.entries(before).map(([k, v]) => ({
       label: FIELD_LABELS[k] || k,
       before: v,
@@ -85,21 +88,18 @@ function DiffView({ item }: { item: AuditItem }) {
   }
 
   return (
-    <div className="p-3 flex items-start gap-3">
-      <div className="text-gray-400">📝</div>
+    <div className="p-3 flex items-start gap-3 hover:bg-[rgb(var(--color-card))]/60 transition-colors duration-300">
+      <div className="text-gray-400 dark:text-gray-500">📝</div>
       <div className="flex-1">
-        <div className="text-sm">
-          <span className="font-medium">{makeTitle(item)}</span>{" "}
-          <span className="text-gray-500">por {actor}</span>
-        </div>
+        <div className="text-sm font-medium">{makeTitle(item)}</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">por {actor}</div>
 
-        {/* Líneas por campo */}
-        {rows.length > 0 ? (
-          <div className="mt-1 text-xs">
+        {!compact && rows.length > 0 && (
+          <div className="mt-1 text-xs space-y-0.5">
             {rows.map((r, idx) => {
               if (r.type === "update") {
                 return (
-                  <div key={idx} className="py-0.5">
+                  <div key={idx}>
                     <span className="font-medium">Modificación de {r.label}:</span>{" "}
                     <span className="line-through opacity-60 break-all">{fmt(r.before)}</span>{" "}
                     <span>→</span>{" "}
@@ -108,15 +108,14 @@ function DiffView({ item }: { item: AuditItem }) {
                 );
               } else if (r.type === "create") {
                 return (
-                  <div key={idx} className="py-0.5">
+                  <div key={idx}>
                     <span className="font-medium">Valor inicial de {r.label}:</span>{" "}
                     <span className="break-all">{fmt(r.after)}</span>
                   </div>
                 );
               } else {
-                // delete
                 return (
-                  <div key={idx} className="py-0.5">
+                  <div key={idx}>
                     <span className="font-medium">Último valor de {r.label}:</span>{" "}
                     <span className="break-all">{fmt(r.before)}</span>
                   </div>
@@ -124,28 +123,48 @@ function DiffView({ item }: { item: AuditItem }) {
               }
             })}
           </div>
-        ) : null}
+        )}
 
-        {/* Si no hay diff ni snapshots, no mostramos detalles extra */}
         <div className="text-[11px] text-gray-400 mt-1">{when}</div>
       </div>
     </div>
   );
 }
 
-type Props = { proyectoId: string };
+type Props = {
+  proyectoId: string;
+  initialLimit?: number;   // default 5
+  enableFilter?: boolean;  // default true
+  compact?: boolean;       // muestra sin diffs detallados
+  className?: string;
+};
 
-export default function ActivityPanel({ proyectoId }: Props) {
+export default function ActivityPanel({
+  proyectoId,
+  initialLimit = 5,
+  enableFilter = true,
+  compact = false,
+  className = "",
+}: Props) {
   const [items, setItems] = useState<AuditItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // filtros
+  const [q, setQ] = useState("");
+  const [action, setAction] = useState<"" | "create" | "update" | "move" | "delete">("");
+
   const load = async (cur: string | null) => {
     setLoading(true);
     try {
       const res = await audit.list(proyectoId, { cursor: cur ?? undefined, limit: 50 });
-      setItems((prev) => (cur ? [...prev, ...res.items] : res.items));
+      // Normalizamos por si el backend devuelve createdAt en lugar de ts
+      const normalized = res.items.map((it: any) => ({
+        ...it,
+        ts: it.ts ?? it.createdAt ?? it.created_at ?? null,
+      })) as AuditItem[];
+      setItems((prev) => (cur ? [...prev, ...normalized] : normalized));
       setNextCursor(res.nextCursor ?? null);
       setCursor(cur ?? null);
     } catch (e) {
@@ -160,33 +179,103 @@ export default function ActivityPanel({ proyectoId }: Props) {
     setCursor(null);
     setNextCursor(null);
     void load(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proyectoId]);
 
-  return (
-    <section className="mt-10">
-      <h3 className="text-lg font-semibold mb-3">Actividad reciente</h3>
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return items.filter((it) => {
+      if (action && it.action !== action) return false;
 
-      <div className="bg-white border rounded-lg divide-y">
-        {items.length === 0 && !loading && (
-          <div className="p-4 text-sm text-gray-500">No hay actividad registrada.</div>
+      if (!term) return true;
+      const actor = (it.actorName || it.actorEmail || "").toLowerCase();
+      const entity = (it.entity || "").toLowerCase();
+      const display = (it.displayName || "").toLowerCase();
+      const any = `${actor} ${entity} ${display}`.includes(term);
+      return any;
+    });
+  }, [items, q, action]);
+
+  const [visible, setVisible] = useState(initialLimit);
+  useEffect(() => setVisible(initialLimit), [initialLimit, proyectoId, q, action]);
+
+  const shown = filtered.slice(0, visible);
+
+  return (
+    <div className={className}>
+      {/* Controles de filtro (solo si enableFilter) */}
+      {enableFilter && (
+        <div className="flex items-center gap-2 p-3 border-b border-[rgb(var(--color-border))]">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar (actor, entidad, nombre)…"
+            className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+          <select
+            value={action}
+            onChange={(e) => setAction(e.target.value as any)}
+            className="w-36 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          >
+            <option value="">Todas</option>
+            <option value="create">Creación</option>
+            <option value="update">Modificación</option>
+            <option value="move">Movimiento</option>
+            <option value="delete">Eliminación</option>
+          </select>
+        </div>
+      )}
+
+      {/* Lista */}
+      <div className="divide-y divide-[rgb(var(--color-border))]">
+        {shown.length === 0 && !loading && (
+          <div className="p-4 text-sm text-gray-500 text-center">
+            Sin resultados.
+          </div>
         )}
 
-        {items.map((it) => (
-          <DiffView key={it.id} item={it} />
+        {shown.map((it) => (
+          <DiffView key={it.id} item={it} compact={compact} />
         ))}
 
-        {loading && <div className="p-3 text-sm text-gray-500">Cargando…</div>}
+        {loading && (
+          <div className="p-3 text-sm text-gray-500 text-center">Cargando…</div>
+        )}
       </div>
 
-      {nextCursor && (
+      {/* Paginación local + remota */}
+      <div className="flex items-center justify-between gap-2 border-t border-[rgb(var(--color-border))] p-3">
         <button
-          onClick={() => load(nextCursor)}
-          className="mt-3 px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200"
+          onClick={() => setVisible((v) => Math.max(initialLimit, v - initialLimit))}
+          className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50"
+          disabled={visible <= initialLimit}
         >
-          Cargar más
+          Ver menos
         </button>
-      )}
-    </section>
+
+        <div className="text-[11px] text-gray-500">
+          Mostrando {Math.min(visible, filtered.length)} de {filtered.length}
+        </div>
+
+        <div className="flex gap-2">
+          {visible < filtered.length && (
+            <button
+              onClick={() => setVisible((v) => v + initialLimit)}
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+            >
+              Cargar más
+            </button>
+          )}
+          {nextCursor && (
+            <button
+              onClick={() => load(nextCursor)}
+              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              title="Obtener más del servidor"
+            >
+              Más del servidor
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

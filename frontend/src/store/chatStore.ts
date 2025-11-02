@@ -1,14 +1,26 @@
-// src/store/chatStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { api } from "../services/api";
 import type { ChatMessage } from "../types/chats";
 
+/** Helpers de IDs */
+const isDm = (id: string) => typeof id === "string" && id.includes("::dm::");
+const projectFromId = (id: string) =>
+  isDm(id) ? id.split("::dm::")[0] : id;
+const bcName = (id: string) => `chat-${id}`; // id = proyectoId o threadId
+
 type ChatState = {
+  /** Mensajes por hilo (clave = proyectoId o threadId) */
   threads: Record<string, ChatMessage[]>;
-  loadHistory: (proyectoId: string) => Promise<void>;
-  subscribeThread: (proyectoId: string) => () => void;
-  sendMessage: (proyectoId: string, sender: string, text: string) => Promise<void>;
+
+  /** Carga el histórico de un hilo (general o DM) */
+  loadHistory: (id: string) => Promise<void>;
+
+  /** Suscribe a mensajes de BroadcastChannel para un hilo */
+  subscribeThread: (id: string) => () => void;
+
+  /** Envía un mensaje a un hilo (optimista + API si aplica) */
+  sendMessage: (id: string, sender: string, text: string) => Promise<void>;
 };
 
 export const useChatStore = create<ChatState>()(
@@ -16,73 +28,100 @@ export const useChatStore = create<ChatState>()(
     (set, get) => ({
       threads: {},
 
-      loadHistory: async (proyectoId: string) => {
-        if (!proyectoId) return;
-        if (proyectoId.startsWith("temp-")) {
-          set((s) => ({ threads: { ...s.threads, [proyectoId]: s.threads[proyectoId] ?? [] } }));
+      loadHistory: async (id: string) => {
+        if (!id) return;
+
+        // Proyectos temporales => solo local
+        if (id.startsWith("temp-")) {
+          set((s) => ({ threads: { ...s.threads, [id]: s.threads[id] ?? [] } }));
           return;
         }
+
         try {
-          const items = await api.getChatHistory(proyectoId);
-          set((s) => ({ threads: { ...s.threads, [proyectoId]: items } }));
+          const items = isDm(id)
+            ? await api.getThreadHistory(projectFromId(id), id)
+            : await api.getChatHistory(id);
+
+          set((s) => ({ threads: { ...s.threads, [id]: items } }));
         } catch (e) {
           console.warn("getChatHistory falló, se mantiene estado local:", e);
-          set((s) => ({ threads: { ...s.threads, [proyectoId]: s.threads[proyectoId] ?? [] } }));
+          set((s) => ({ threads: { ...s.threads, [id]: s.threads[id] ?? [] } }));
         }
       },
 
-      subscribeThread: (proyectoId: string) => {
-        if (!proyectoId) return () => {};
+      subscribeThread: (id: string) => {
+        if (!id) return () => {};
         if (typeof window === "undefined" || !("BroadcastChannel" in window)) return () => {};
-        const bc = new BroadcastChannel(`chat-${proyectoId}`);
-        const handler = (ev: MessageEvent) => {
-          const msg = ev.data as ChatMessage;
-          if (!msg || msg.proyectoId !== proyectoId) return;
+
+        const channel = new BroadcastChannel(bcName(id));
+        const onMsg = (ev: MessageEvent) => {
+          const msg = ev.data as ChatMessage | undefined;
+          if (!msg) return;
+          // Aseguramos que el msg pertenece a este hilo (por si acaso)
+          const belongs =
+            (isDm(id) && msg.proyectoId === projectFromId(id)) ||
+            (!isDm(id) && msg.proyectoId === id) ||
+            true; // lo aceptamos en local
+
+          if (!belongs) return;
+
           set((s) => {
-            const list = s.threads[proyectoId] ?? [];
+            const list = s.threads[id] ?? [];
             if (list.some((m) => m.id === msg.id)) return s;
-            return { threads: { ...s.threads, [proyectoId]: [...list, msg] } };
+            return { threads: { ...s.threads, [id]: [...list, msg] } };
           });
         };
-        bc.addEventListener("message", handler);
-        return () => bc.removeEventListener("message", handler);
+
+        channel.addEventListener("message", onMsg);
+
+        return () => {
+          channel.removeEventListener("message", onMsg);
+          try {
+            channel.close();
+          } catch {}
+        };
       },
 
-      sendMessage: async (proyectoId, sender, text) => {
+      sendMessage: async (id: string, sender: string, text: string) => {
         const t = (text ?? "").trim();
-        const senderLower = (sender ?? "").trim().toLowerCase();
-        if (!proyectoId || !senderLower || !t) return;
+        const from = (sender ?? "").trim().toLowerCase();
+        if (!id || !from || !t) return;
 
         const msg: ChatMessage = {
           id:
             (globalThis.crypto as any)?.randomUUID?.() ??
             `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          proyectoId,
-          sender: senderLower,
+          proyectoId: projectFromId(id),
+          sender: from,
           text: t,
           ts: new Date().toISOString(),
         };
 
-        // Optimismo
+        // Optimista
         set((s) => {
-          const list = s.threads[proyectoId] ?? [];
-          return { threads: { ...s.threads, [proyectoId]: [...list, msg] } };
+          const list = s.threads[id] ?? [];
+          return { threads: { ...s.threads, [id]: [...list, msg] } };
         });
 
         // Broadcast local
         if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-          new BroadcastChannel(`chat-${proyectoId}`).postMessage(msg);
+          new BroadcastChannel(bcName(id)).postMessage(msg);
         }
 
-        if (proyectoId.startsWith("temp-")) return; // no pegamos al backend aún
+        // temp-* => no pegamos al backend
+        if (id.startsWith("temp-")) return;
 
         try {
-          await api.sendChatMessage(proyectoId, senderLower, t);
+          if (isDm(id)) {
+            await api.sendThreadMessage(projectFromId(id), id, from, t);
+          } else {
+            await api.sendChatMessage(id, from, t);
+          }
         } catch (e) {
           console.warn("sendChatMessage falló, se deja el mensaje local:", e);
         }
       },
     }),
-    { name: "chat-storage" }
+    { name: "chat-storage-v2" }
   )
 );

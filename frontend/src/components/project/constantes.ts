@@ -6,11 +6,16 @@ export const estados: Array<{ id: Estado; titulo: string }> = [
   { id: "completado",  titulo: "Completado" },
 ];
 
-export const columnaColors: Record<Estado, string> = {
-  "por-hacer":   "bg-yellow-100",
-  "en-progreso": "bg-blue-100",
-  "completado":  "bg-green-100",
+// Colores sutiles por columna (light + dark)
+export const columnaColors: Record<string, string> = {
+  // header de columna (no el body) — tonos muy suaves
+  todo:     "bg-amber-50/70 dark:bg-amber-950/20",
+  doing:    "bg-sky-50/70 dark:bg-sky-950/20",
+  done:     "bg-emerald-50/70 dark:bg-emerald-950/20",
+
+  // Si tienes más estados, añade aquí con el mismo patrón
 };
+
 
 export const ordenPrioridad: Record<Prioridad, number> = {
   alta: 1,

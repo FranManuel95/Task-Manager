@@ -35,6 +35,31 @@ function idToNum(id: string): number {
   return onlyDigits ? Number(onlyDigits) : 0;
 }
 
+/** Muestra solo la fecha legible local a partir de ISO o 'YYYY-MM-DD' */
+function formatDateOnly(value: string): string {
+  try {
+    const d = value.length > 10 ? new Date(value) : new Date(value + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString();
+  } catch {
+    return value;
+  }
+}
+
+/** Normaliza a 'YYYY-MM-DD' para inputs type="date" (sin desplazamientos UTC) */
+function toDateInputValue(raw: string): string {
+  try {
+    const d = raw.length > 10 ? new Date(raw) : new Date(raw + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  } catch {
+    return "";
+  }
+}
+
 export default function Dashboard() {
   const email = useAuthStore((state) => state.usuario?.email || "");
   const usuario = useAuthStore((state) => state.usuario);
@@ -45,7 +70,7 @@ export default function Dashboard() {
   const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
 
-  // 👇 Suscripción “boba” para que el componente re-renderice cuando cambie el estado global
+  // Suscripción para re-render al cambiar el estado global
   const proyectosState = useTareasStore((s) => s.proyectos);
 
   useEffect(() => {
@@ -62,7 +87,7 @@ export default function Dashboard() {
   const [proyectoAEditar, setProyectoAEditar] = useState<ProyectoType | null>(null);
   const [proyectoAEliminar, setProyectoAEliminar] = useState<string | null>(null);
 
-  // 👇 Recalcula los proyectos del usuario cuando cambian email o el estado de proyectos
+  // Recalcula los proyectos del usuario cuando cambian email o el estado de proyectos
   const proyectos = useMemo(() => {
     return getProyectosPorUsuario(email) as Record<string, ProyectoType>;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -224,7 +249,7 @@ export default function Dashboard() {
 
                     {/* Deadline */}
                     <td className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}>
-                      {proyecto.deadline ? `📅 ${proyecto.deadline}` : "—"}
+                      {proyecto.deadline ? `📅 ${formatDateOnly(proyecto.deadline)}` : "—"}
                     </td>
 
                     {/* Color */}
@@ -250,7 +275,8 @@ export default function Dashboard() {
                             setNuevoNombre(proyecto.nombre);
                             setNuevaDescripcion(proyecto.descripcion);
                             setNuevoColor(proyecto.color);
-                            setNuevoDeadline(proyecto.deadline || "");
+                            // Normaliza a YYYY-MM-DD para el input del modal
+                            setNuevoDeadline(proyecto.deadline ? toDateInputValue(proyecto.deadline) : "");
                           }}
                           className="text-gray-500 hover:text-gray-700 text-sm"
                           title="Editar proyecto"

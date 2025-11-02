@@ -1,42 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
-
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Project from "./pages/ProjectPage";
 import Protegido from "./components/auth/Protegido";
 import Home from "./pages/Home";
-
-import { useAuthStore } from "./store/authStore";
+import AppShell from "./components/layout/AppShell";
 
 export default function App() {
-  const me = useAuthStore((s) => s.me);
-  const hasCheckedSession = useAuthStore((s) => s.hasCheckedSession);
-
-  useEffect(() => {
-    if (!hasCheckedSession) {
-      // Comprobamos sesión una vez al arrancar; si 401, el store lo ignora
-      void me();
-    }
-  }, [hasCheckedSession, me]);
-
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Públicas */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <AppShell>
+        <Routes>
+          {/* Públicas */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Protegidas */}
-        <Route element={<Protegido />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/proyecto/:id" element={<Project />} />
-        </Route>
+          {/* Protegidas */}
+          <Route element={<Protegido />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/proyecto/:id" element={<Project />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AppShell>
     </BrowserRouter>
   );
 }

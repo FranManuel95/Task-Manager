@@ -1,3 +1,4 @@
+// src/services/api.ts
 import type { Proyecto } from "../types/proyecto";
 import type { Tarea } from "../types/tarea";
 import type { Estado } from "../types/estado";
@@ -10,7 +11,8 @@ import type {
 } from "../types/api";
 import type { ChatMessage } from "../types/chats";
 import type { Paginated } from "../types/common";
-import { ID } from '../types/common';
+
+/* ----------------- Utilidades / Infra ----------------- */
 
 export class ApiError extends Error {
   status: number;
@@ -59,11 +61,36 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 const http = {
-  get:   <T>(path: string, params?: Record<string, unknown>) => request<T>(`${path}${toQuery(params)}`),
-  post:  <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body == null ? undefined : JSON.stringify(body) }),
-  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
-  delete:<T>(path: string) => request<T>(path, { method: "DELETE" }),
+  get: <T>(path: string, params?: Record<string, unknown>) =>
+    request<T>(`${path}${toQuery(params)}`),
+  post: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "POST", body: body == null ? undefined : JSON.stringify(body) }),
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
+
+/* ----------------- Helpers chat ----------------- */
+
+// Convención: "<proyectoId>::dm::<otra-cosa>"
+export function isThreadId(id: string): boolean {
+  return typeof id === "string" && id.includes("::dm::");
+}
+
+export function getProyectoIdFromThreadId(threadId: string): string {
+  if (!isThreadId(threadId)) return threadId;
+  return threadId.split("::dm::")[0] || "";
+}
+
+// Normaliza respuestas variadas a ChatMessage[]
+function normalizeMessages(res: any): ChatMessage[] {
+  if (Array.isArray(res)) return res as ChatMessage[];
+  if (Array.isArray(res?.items)) return res.items as ChatMessage[];
+  if (Array.isArray(res?.data)) return res.data as ChatMessage[];
+  return [] as ChatMessage[];
+}
+
+/* ----------------- API pública ----------------- */
 
 export const api = {
   /** Proyectos */
@@ -89,7 +116,10 @@ export const api = {
 
   /** Tareas */
   createTarea: (proyectoId: string, estado: Estado, dto: CreateTareaDTO) =>
-    http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, { ...dto, estado }),
+    http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, {
+      ...dto,
+      estado,
+    }),
 
   updateTarea: (proyectoId: string, tareaId: string, dto: UpdateTareaDTO) =>
     http.patch<Tarea>(
@@ -97,7 +127,6 @@ export const api = {
       dto
     ),
 
-  // Mover tarea — el backend acepta to/destino/estado (usamos destino para ser explícitos)
   moveTarea: (proyectoId: string, payload: MoveTareaDTO) => {
     const body: Record<string, unknown> = {
       tareaId: payload.tareaId,
@@ -117,13 +146,13 @@ export const api = {
       `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`
     ),
 
-  /** Chat */
+  /** Chat (general por proyecto) */
   getChatHistory: async (proyectoId: string, params?: { page?: number; pageSize?: number }) => {
-    const res = await http.get<any>(`/api/proyectos/${encodeURIComponent(proyectoId)}/chat`, params);
-    if (Array.isArray(res)) return res as ChatMessage[];
-    if (Array.isArray(res?.items)) return res.items as ChatMessage[];
-    if (Array.isArray(res?.data)) return res.data as ChatMessage[];
-    return [] as ChatMessage[];
+    const res = await http.get<any>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/chat`,
+      params
+    );
+    return normalizeMessages(res);
   },
 
   sendChatMessage: (proyectoId: string, sender: string, text: string) =>
@@ -132,14 +161,61 @@ export const api = {
       text,
     }),
 
+  /**
+   * Chat — Threads (DMs).
+   * Estas rutas requieren soporte en tu backend. Si no existen:
+   * - getThreadHistory devolverá []
+   * - sendThreadMessage lanzará ApiError(404)
+   */
+  getThreadHistory: async (proyectoId: string, threadId: string) => {
+    try {
+      const path = `/api/proyectos/${encodeURIComponent(
+        proyectoId
+      )}/chat/threads/${encodeURIComponent(threadId)}`;
+      const res = await http.get<any>(path);
+      return normalizeMessages(res);
+    } catch (e: any) {
+      if (e?.status === 404) return [] as ChatMessage[];
+      throw e;
+    }
+  },
+
+  sendThreadMessage: async (proyectoId: string, threadId: string, sender: string, text: string) => {
+    const path = `/api/proyectos/${encodeURIComponent(
+      proyectoId
+    )}/chat/threads/${encodeURIComponent(threadId)}`;
+    return http.post<ChatMessage>(path, { sender, text });
+  },
+
+  /** Utilidad: historial por id genérico (proyectoId o threadId) */
+  getAnyChatHistory: async (id: string) => {
+    if (!id) return [] as ChatMessage[];
+    if (isThreadId(id)) {
+      const projId = getProyectoIdFromThreadId(id);
+      if (!projId) return [] as ChatMessage[];
+      return api.getThreadHistory(projId, id);
+    }
+    return api.getChatHistory(id);
+  },
+
+  /** Utilidad: enviar por id genérico (proyectoId o threadId) */
+  sendAnyMessage: async (id: string, sender: string, text: string) => {
+    if (!id || !sender || !text) return;
+    if (isThreadId(id)) {
+      const projId = getProyectoIdFromThreadId(id);
+      if (!projId) throw new ApiError("threadId inválido (no contiene proyectoId)", 400);
+      return api.sendThreadMessage(projId, id, sender, text);
+    }
+    return api.sendChatMessage(id, sender, text);
+  },
+
   /** Auditoría */
   getAudit: (proyectoId: string) =>
     http.get<AuditItem[]>(`/api/proyectos/${encodeURIComponent(proyectoId)}/audit`),
 };
 
-// --- Auth ---
+/* ----------------- Auth ----------------- */
 
-// TIPOS
 export type RegisterPayload = {
   email: string;
   password: string;
@@ -157,8 +233,6 @@ export type SessionUser = {
   avatarUrl?: string | null;
 };
 
-// AUTH API
-// ...
 export const authApi = {
   register: (payload: RegisterPayload) =>
     http.post<{ ok: true }>("/api/auth/register", payload),
@@ -169,7 +243,6 @@ export const authApi = {
       { email, password }
     ),
 
-  // ⬇️ si 401 => devuelve null en vez de lanzar
   me: async () => {
     try {
       return await http.get<SessionUser>("/api/auth/me");
@@ -182,7 +255,7 @@ export const authApi = {
   logout: () => http.post<void>("/api/auth/logout"),
 };
 
-// --- al final de api.ts (o en una sección de tipos globales) ---
+/* ----------------- Auditoría: tipos auxiliares ----------------- */
 
 export type AuditItem = {
   id: string;
@@ -193,9 +266,8 @@ export type AuditItem = {
   action: string;
   actorEmail: string;
   actorName?: string | null;
-  displayName?: string | null; // 👈 nuevo
+  displayName?: string | null;
 
-  // Estructura esperada de payload
   payload?: {
     entityName?: string | null;
     before?: Record<string, any>;
@@ -203,7 +275,6 @@ export type AuditItem = {
     diff?: Record<string, { before: any; after: any }>;
   } | null;
 };
-
 
 export type AuditPage = {
   items: AuditItem[];
@@ -217,4 +288,3 @@ export const audit = {
       params as any
     ),
 };
-

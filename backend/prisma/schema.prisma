@@ -8,6 +8,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+/**
+ * ======= ENUMS =======
+ */
 enum Estado {
   por_hacer   @map("por-hacer")
   en_progreso @map("en-progreso")
@@ -20,22 +23,26 @@ enum Prioridad {
   baja
 }
 
+/**
+ * ======= MODELOS =======
+ */
 model Proyecto {
-  id          String       @id @default(cuid())
+  id          String        @id @default(uuid())
   nombre      String
   descripcion String?
-  color       String       @default("#3B82F6")
+  color       String
   deadline    DateTime?
   creadoPor   String
-  usuarios    String[]     @db.Text
-  tareas      Tarea[]
-  mensajes    ChatMessage[]
+  usuarios    String[]
 
-  // 👇 NUEVO: relación con el registro de auditoría (logs)
-  logs        AuditLog[]
+  // Relaciones
+  tareas     Tarea[]
+  messages   ChatMessage[]
+  threads    ChatThread[]
+  auditLogs  AuditLog[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Tarea {
@@ -47,10 +54,10 @@ model Tarea {
   descripcion String?
   prioridad   Prioridad @default(media)
   deadline    DateTime?
-  etiquetas   String[]  @db.Text
+  etiquetas   String[]  // Postgres -> text[]
   estado      Estado    @default(por_hacer)
 
-  // 👇 NUEVO: trazabilidad de autoría y última edición
+  // Metadatos
   createdBy   String?
   updatedBy   String?
 
@@ -58,32 +65,33 @@ model Tarea {
   updatedAt   DateTime @updatedAt
 }
 
-model ChatMessage {
-  id          String    @id @default(cuid())
+model ChatThread {
+  id          String    @id @default(uuid())
   proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   proyectoId  String
-  sender      String
-  text        String    @db.Text
-  ts          DateTime  @default(now())
 
-  @@index([proyectoId, ts])
+  isPrivate   Boolean   @default(false)
+  participants String[] // emails de participantes
+
+  messages    ChatMessage[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model AuditLog {
-  id          String    @id @default(cuid())
-  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+model ChatMessage {
+  id          String      @id @default(uuid())
+  proyecto    Proyecto    @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   proyectoId  String
 
-  // entidad afectada (libre para no romper nada en el BE)
-  entity      String          // "proyecto" | "tarea" | "chat" | ...
-  entityId    String?
-  action      String          // "create" | "update" | "delete" | "move" | ...
-  actorEmail  String
-  payload     Json?
+  thread      ChatThread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  threadId    String?
 
-  createdAt   DateTime  @default(now())
+  sender      String
+  text        String
 
-  @@index([proyectoId, createdAt])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model User {
@@ -91,12 +99,24 @@ model User {
   email        String   @unique
   passwordHash String
 
-  name       String?
-  avatarUrl  String?
-  birthdate  DateTime?
-  jobTitle   String?
-  phone      String?
+  name      String?
+  avatarUrl String?
+  birthdate DateTime?
+  jobTitle  String?
+  phone     String?
 
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId String
+  entity     String
+  entityId   String?
+  action     String
+  actorEmail String
+  payload    Json?
 }

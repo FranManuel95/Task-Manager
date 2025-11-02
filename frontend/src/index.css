@@ -1,6 +1,37 @@
 @import "tailwindcss";
 
-/* Puedes añadir estilos propios aquí si quieres */
-html, body, #root {
+/* Define la variante 'dark' controlada por la clase .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
   height: 100%;
 }
+/* Paleta base oscura personalizada */
+:root {
+  --color-bg: 255 255 255;
+  --color-fg: 17 24 39;
+  --color-card: 249 250 251;
+  --color-border: 229 231 235;
+}
+
+.dark {
+  --color-bg: 24 24 27;
+  --color-fg: 243 244 246;
+  --color-card: 39 39 42;
+  --color-border: 63 63 70;
+}
+
+@layer utilities {
+  .theme-bg {
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-fg));
+  }
+  .theme-card {
+    background-color: rgb(var(--color-card));
+    color: rgb(var(--color-fg));
+    border: 1px solid rgb(var(--color-border));
+  }
+}
+
