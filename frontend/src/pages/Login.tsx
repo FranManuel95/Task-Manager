@@ -29,7 +29,6 @@ export default function Login() {
       toast.success("Bienvenido 👋");
       navigate("/dashboard");
     }
-    // Si no ok, el store ya habrá puesto error y se toast-ea en el effect de abajo
   };
 
   useEffect(() => {
@@ -41,37 +40,56 @@ export default function Login() {
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+    <div className="min-h-screen flex items-center justify-center theme-bg transition-colors duration-500 px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-4"
+        className="theme-card w-full max-w-md rounded-2xl shadow-xl border border-[rgb(var(--color-border))] p-8 space-y-5"
       >
-        <h2 className="text-2xl font-bold">Iniciar sesión</h2>
+        <h2 className="text-2xl font-semibold text-[rgb(var(--color-fg))]">
+          Iniciar sesión
+        </h2>
 
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-          autoComplete="email"
-          className="w-full border border-gray-300 px-3 py-2 rounded"
-        />
+        <label className="block space-y-1">
+          <span className="text-sm text-[rgb(var(--color-fg-muted))]">Correo electrónico</span>
+          <input
+            type="email"
+            placeholder="correo@ejemplo.com"
+            value={email}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            autoComplete="email"
+            className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                       bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                       px-3 py-2 outline-none transition
+                       focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                       placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+          />
+        </label>
 
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          className="w-full border border-gray-300 px-3 py-2 rounded"
-        />
+        <label className="block space-y-1">
+          <span className="text-sm text-[rgb(var(--color-fg-muted))]">Contraseña</span>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                       bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                       px-3 py-2 outline-none transition
+                       focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                       placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+          />
+        </label>
 
         <button
           type="submit"
           disabled={loading}
-          className={`w-full text-white py-2 rounded transition ${
-            loading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-          }`}
+          className={`w-full rounded-lg px-4 py-2 font-medium text-white transition
+                      focus:outline-none focus:ring-2 focus:ring-indigo-400
+                      ${loading
+                        ? "bg-neutral-400 cursor-not-allowed"
+                        : "bg-indigo-600 hover:bg-indigo-500"
+                      }`}
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>

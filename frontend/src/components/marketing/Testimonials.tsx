@@ -29,7 +29,7 @@ const DEFAULT_ITEMS: Testimonial[] = [
     name: "Meri",
     role: "Tech Lead Frontend",
     quote:
-      "La colaboración es impecable: invitamos al equipo, editamos tareas en paralelo y el chat interno evita perder contexto. Todo con React + TS y Zustand, sin fricción.",
+      "La colaboración es impecable: invitamos al equipo, editamos tareas en paralelo y el chat interno evita perder contexto.",
     avatar: "/testimonials/cliente2.svg",
   },
   {

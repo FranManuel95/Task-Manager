@@ -13,12 +13,37 @@ const FIELD_LABELS: Record<string, string> = {
   etiquetas: "etiquetas",
 };
 
-function fmt(val: any): string {
+// --- helpers de formateo de valores (aplica fecha SOLO como dd MMM yyyy) ---
+function isDateLikeString(s: string) {
+  // "YYYY-MM-DD" o ISO con tiempo
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(s) ||
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)
+  );
+}
+
+function fmtValue(val: any, field?: string): string {
+  // Para deadline, si recibimos string fecha/ISO -> dd MMM yyyy
+  if (field === "deadline" && typeof val === "string" && isDateLikeString(val)) {
+    const d = safeParseDate(val);
+    return d ? format(d, "dd MMM yyyy", { locale: es }) : val;
+  }
+
   if (val == null) return "—";
   if (Array.isArray(val)) return val.join(", ");
+
+  // Si es string genérico y parece fecha, SOLO la mostramos como fecha si el campo lo pide (deadline)
+  // Para otros campos, la dejamos tal cual.
   if (typeof val === "string") return val;
   if (typeof val === "object") return JSON.stringify(val);
   return String(val);
+}
+
+function fmtDiffBefore(val: any, field?: string) {
+  return fmtValue(val, field);
+}
+function fmtDiffAfter(val: any, field?: string) {
+  return fmtValue(val, field);
 }
 
 function makeTitle(item: AuditItem) {
@@ -50,7 +75,8 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
     null;
 
   const d = safeParseDate(tsStr);
-  const when = d ? format(d, "dd MMM yyyy HH:mm", { locale: es }) : "—";
+  // Solo FECHA (sin hora) para la marca temporal del evento
+  const when = d ? format(d, "dd MMM yyyy", { locale: es }) : "—";
 
   const actor = item.actorName || item.actorEmail || "—";
   const payload = ((item as any).payload ?? {}) as any;
@@ -64,10 +90,17 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
   const before = isPlainObject(payload.before) ? payload.before : undefined;
   const after = isPlainObject(payload.after) ? payload.after : undefined;
 
-  let rows: Array<{ label: string; before?: any; after?: any; type: "update" | "create" | "delete" }> = [];
+  let rows: Array<{
+    label: string;
+    fieldKey: string;
+    before?: any;
+    after?: any;
+    type: "update" | "create" | "delete";
+  }> = [];
 
   if ((item.action === "update" || item.action === "move") && diff && Object.keys(diff).length > 0) {
     rows = Object.entries(diff).map(([k, v]) => ({
+      fieldKey: k,
       label: FIELD_LABELS[k] || k,
       before: (v as any).before,
       after: (v as any).after,
@@ -75,49 +108,59 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
     }));
   } else if (item.action === "create" && after) {
     rows = Object.entries(after).map(([k, v]) => ({
+      fieldKey: k,
       label: FIELD_LABELS[k] || k,
       after: v,
       type: "create" as const,
-    }));
+    })) as any;
   } else if (item.action === "delete" && before) {
     rows = Object.entries(before).map(([k, v]) => ({
+      fieldKey: k,
       label: FIELD_LABELS[k] || k,
       before: v,
       type: "delete" as const,
-    }));
+    })) as any;
   }
 
   return (
     <div className="p-3 flex items-start gap-3 hover:bg-[rgb(var(--color-card))]/60 transition-colors duration-300">
       <div className="text-gray-400 dark:text-gray-500">📝</div>
       <div className="flex-1">
-        <div className="text-sm font-medium">{makeTitle(item)}</div>
+        <div className="text-sm font-medium dark:text-white">{makeTitle(item)}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">por {actor}</div>
 
         {!compact && rows.length > 0 && (
-          <div className="mt-1 text-xs space-y-0.5">
+          <div className="dark:text-gray-400 mt-1 text-xs space-y-0.5">
             {rows.map((r, idx) => {
               if (r.type === "update") {
                 return (
-                  <div key={idx}>
+                  <div className="dark:text-gray-400" key={idx}>
                     <span className="font-medium">Modificación de {r.label}:</span>{" "}
-                    <span className="line-through opacity-60 break-all">{fmt(r.before)}</span>{" "}
+                    <span className="line-through opacity-60 break-all">
+                      {fmtDiffBefore(r.before, r.fieldKey)}
+                    </span>{" "}
                     <span>→</span>{" "}
-                    <span className="break-all">{fmt(r.after)}</span>
+                    <span className="break-all">
+                      {fmtDiffAfter(r.after, r.fieldKey)}
+                    </span>
                   </div>
                 );
               } else if (r.type === "create") {
                 return (
                   <div key={idx}>
                     <span className="font-medium">Valor inicial de {r.label}:</span>{" "}
-                    <span className="break-all">{fmt(r.after)}</span>
+                    <span className="break-all">
+                      {fmtDiffAfter(r.after, r.fieldKey)}
+                    </span>
                   </div>
                 );
               } else {
                 return (
                   <div key={idx}>
                     <span className="font-medium">Último valor de {r.label}:</span>{" "}
-                    <span className="break-all">{fmt(r.before)}</span>
+                    <span className="break-all">
+                      {fmtDiffBefore(r.before, r.fieldKey)}
+                    </span>
                   </div>
                 );
               }
@@ -204,12 +247,12 @@ export default function ActivityPanel({
     <div className={className}>
       {/* Controles de filtro (solo si enableFilter) */}
       {enableFilter && (
-        <div className="flex items-center gap-2 p-3 border-b border-[rgb(var(--color-border))]">
+        <div className="dark:text-white flex items-center gap-2 p-3 border-b border-[rgb(var(--color-border))]">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar (actor, entidad, nombre)…"
-            className="flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
+            className="dark:text-white flex-1 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
           />
           <select
             value={action}
@@ -246,7 +289,7 @@ export default function ActivityPanel({
       <div className="flex items-center justify-between gap-2 border-t border-[rgb(var(--color-border))] p-3">
         <button
           onClick={() => setVisible((v) => Math.max(initialLimit, v - initialLimit))}
-          className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50"
+          className="dark:text-white rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50"
           disabled={visible <= initialLimit}
         >
           Ver menos

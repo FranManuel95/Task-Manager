@@ -30,7 +30,7 @@ export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center bg-gray-100/70 z-50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -38,25 +38,36 @@ export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
     >
       <div
         ref={dialogRef}
-        className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
+        className="theme-card w-full max-w-md rounded-2xl border border-[rgb(var(--color-border))] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="text-xl font-bold mb-4 text-red-600">
+        <h2
+          id={titleId}
+          className="mb-3 text-xl font-bold text-red-600 dark:text-red-400"
+        >
           Eliminar proyecto
         </h2>
-        <p className="mb-4 text-gray-700">
-          ¿Seguro que deseas eliminar este proyecto? Esta acción no se puede deshacer.
+
+        <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">
+          ¿Seguro que deseas eliminar este proyecto?{" "}
+          <span className="font-medium text-red-600 dark:text-red-400">
+            Esta acción no se puede deshacer.
+          </span>
         </p>
-        <div className="flex justify-end gap-2">
+
+        <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded bg-gray-400 text-white hover:bg-gray-500"
+            className="rounded-lg border border-[rgb(var(--color-border))]
+                       bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-fg))]
+                       hover:bg-[rgb(var(--color-card))]/80 transition"
           >
             Cancelar
           </button>
+
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+            className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 transition"
           >
             Eliminar
           </button>

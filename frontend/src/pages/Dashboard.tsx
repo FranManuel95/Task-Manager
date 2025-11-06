@@ -7,6 +7,7 @@ import { useAuthStore } from "../store/authStore";
 import ModalCrearProyecto from "../components/modals/ModalCrearProyecto";
 import ModalEditarProyecto from "../components/modals/ModalEditarProyecto";
 import ModalEliminarProyecto from "../components/modals/ModalEliminarProyecto";
+import TopBar from "../components/layout/TopBar";
 
 type ProyectoType = {
   id: string;
@@ -152,15 +153,23 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-6">
-        <h1 className="text-3xl font-bold">Tus Proyectos</h1>
+    
+    <div className="theme-bg min-h-screen transition-colors duration-500">
+         <TopBar title="Gestor de Proyectos" />
+    
+    <div className="p-6 theme-bg min-h-screen transition-colors duration-500">
+       
+   
+  
+    
+      <div className="flex justify-between mb-6 mt-6">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-neutral-100">Tus Proyectos</h1>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <button
           onClick={() => setMostrarModal(true)}
-          className="flex items-center justify-center p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text font-semibold"
+          className="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-semibold"
         >
           Nuevo Proyecto
         </button>
@@ -169,12 +178,14 @@ export default function Dashboard() {
           value={busqueda}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setBusqueda(e.target.value)}
           placeholder="Buscar proyectos..."
-          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded"
+          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded bg-white text-gray-800 placeholder:text-gray-400
+                     dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400"
         />
         <select
           value={orden}
           onChange={(e: ChangeEvent<HTMLSelectElement>) => setOrden(e.target.value)}
-          className="w-full sm:w-1/4 px-3 py-2 border border-gray-300 rounded"
+          className="w-full sm:w-1/4 px-3 py-2 border border-gray-300 rounded bg-white text-gray-800
+                     dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           <option value="recientes">Más recientes</option>
           <option value="antiguos">Más antiguos</option>
@@ -184,42 +195,44 @@ export default function Dashboard() {
       </div>
 
       {/* === Grid -> Tabla responsiva === */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white
+                      dark:border-neutral-800 dark:bg-neutral-800">
         {proyectosFiltrados.length > 0 ? (
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-neutral-800">
             <caption className="sr-only">Listado de proyectos</caption>
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-neutral-900/60">
               <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proyecto</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progreso</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tareas</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Deadline</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Color</th>
-                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Proyecto</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Descripción</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Progreso</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Tareas</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Deadline</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Color</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-neutral-300 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
               {proyectosFiltrados.map((proyecto) => {
                 const total = Object.values(proyecto.tareas).flat().length;
                 const done = proyecto.tareas["completado"]?.length || 0;
                 const progreso = total ? Math.round((done / total) * 100) : 0;
 
+                // Colores de deadline con variantes dark
                 const deadlineClass = proyecto.deadline
                   ? isBefore(parseISO(proyecto.deadline), new Date())
-                    ? "text-red-600"
+                    ? "text-red-600 dark:text-red-400"
                     : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
-                    ? "text-orange-500"
-                    : "text-gray-700"
-                  : "text-gray-400";
+                    ? "text-orange-500 dark:text-amber-400"
+                    : "text-gray-700 dark:text-neutral-300"
+                  : "text-gray-400 dark:text-neutral-500";
 
                 return (
-                  <tr key={proyecto.id} className="hover:bg-gray-50">
+                  <tr key={proyecto.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800/60">
                     {/* Proyecto con Link al detalle */}
                     <td className="px-4 py-3 align-top whitespace-nowrap">
                       <Link
                         to={`/proyecto/${proyecto.id}`}
-                        className="font-medium text-gray-900 hover:underline"
+                        className="font-medium text-gray-900 dark:text-neutral-100 hover:underline"
                         title="Ver detalle del proyecto"
                       >
                         {proyecto.nombre}
@@ -227,11 +240,13 @@ export default function Dashboard() {
                     </td>
 
                     {/* Descripción */}
-                    <td className="px-4 py-3 align-top text-sm text-gray-600 max-w-[40ch] truncate">{proyecto.descripcion}</td>
+                    <td className="px-4 py-3 align-top text-sm text-gray-600 dark:text-neutral-300 max-w-[40ch] truncate">
+                      {proyecto.descripcion}
+                    </td>
 
                     {/* Progreso */}
                     <td className="px-4 py-3 align-top w-56">
-                      <div className="w-full bg-gray-200 h-2 rounded">
+                      <div className="w-full h-2 rounded bg-gray-200 dark:bg-neutral-800">
                         <div
                           className="h-2 rounded bg-green-500"
                           style={{ width: `${progreso}%` }}
@@ -241,11 +256,13 @@ export default function Dashboard() {
                           role="progressbar"
                         />
                       </div>
-                      <div className="mt-1 text-xs text-gray-600">{progreso}%</div>
+                      <div className="mt-1 text-xs text-gray-600 dark:text-neutral-400">{progreso}%</div>
                     </td>
 
                     {/* Tareas completadas / total */}
-                    <td className="px-4 py-3 align-top text-sm text-gray-700 whitespace-nowrap">{done}/{total}</td>
+                    <td className="px-4 py-3 align-top text-sm text-gray-700 dark:text-neutral-200 whitespace-nowrap">
+                      {done}/{total}
+                    </td>
 
                     {/* Deadline */}
                     <td className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}>
@@ -256,12 +273,12 @@ export default function Dashboard() {
                     <td className="px-4 py-3 align-top">
                       <div className="flex items-center gap-2">
                         <span
-                          className="inline-block w-5 h-5 rounded-full border border-gray-200 shadow-sm"
+                          className="inline-block w-5 h-5 rounded-full border border-gray-200 dark:border-neutral-700 shadow-sm"
                           style={{ backgroundColor: proyecto.color }}
                           aria-label={`Color ${proyecto.color}`}
                           title={proyecto.color}
                         />
-                        <code className="text-xs text-gray-700">{proyecto.color}</code>
+                        <code className="text-xs text-gray-700 dark:text-neutral-300">{proyecto.color}</code>
                       </div>
                     </td>
 
@@ -278,7 +295,7 @@ export default function Dashboard() {
                             // Normaliza a YYYY-MM-DD para el input del modal
                             setNuevoDeadline(proyecto.deadline ? toDateInputValue(proyecto.deadline) : "");
                           }}
-                          className="text-gray-500 hover:text-gray-700 text-sm"
+                          className="text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 text-sm"
                           title="Editar proyecto"
                           aria-label={`Editar ${proyecto.nombre}`}
                         >
@@ -289,7 +306,7 @@ export default function Dashboard() {
                             e.preventDefault();
                             setProyectoAEliminar(proyecto.id);
                           }}
-                          className="text-red-500 hover:text-red-700 text-sm"
+                          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm"
                           title="Eliminar proyecto"
                           aria-label={`Eliminar ${proyecto.nombre}`}
                         >
@@ -303,7 +320,7 @@ export default function Dashboard() {
             </tbody>
           </table>
         ) : (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-gray-500 dark:text-neutral-400">
             No se encontraron proyectos. ¡Crea uno para comenzar!
           </div>
         )}
@@ -345,6 +362,7 @@ export default function Dashboard() {
           onConfirm={confirmarEliminar}
         />
       )}
+    </div>
     </div>
   );
 }

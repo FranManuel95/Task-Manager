@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 type Extras = {
   name?: string;
-  avatarUrl?: string;   // 👈 el backend espera 'avatarUrl'
+  avatarUrl?: string;   // el backend espera 'avatarUrl'
   birthdate?: string;   // yyyy-mm-dd
   jobTitle?: string;
   phone?: string;
@@ -17,8 +17,8 @@ export default function Register() {
 
   // nuevos campos (UI)
   const [name, setName] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>("");   // seguimos llamándole photoUrl en el input
-  const [birthdate, setBirthdate] = useState<string>(""); // input="date" -> yyyy-mm-dd
+  const [photoUrl, setPhotoUrl] = useState<string>("");   // input -> luego mapeamos a avatarUrl
+  const [birthdate, setBirthdate] = useState<string>("");
   const [jobTitle, setJobTitle] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
 
@@ -31,7 +31,7 @@ export default function Register() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    clearError(); // Limpia error anterior al montar
+    clearError();
   }, [clearError]);
 
   useEffect(() => {
@@ -41,7 +41,6 @@ export default function Register() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // validaciones mínimas
     if (!email.trim()) return toast.error("El email es obligatorio");
     if (!password) return toast.error("La contraseña es obligatoria");
     if (phone && !/^[\d+\s()-]{6,}$/.test(phone)) {
@@ -50,17 +49,14 @@ export default function Register() {
 
     const extras: Extras = {
       name: name.trim() || undefined,
-      avatarUrl: photoUrl.trim() || undefined,   // 👈 mapeamos a 'avatarUrl'
-      birthdate: birthdate || undefined,         // el backend parsea string a Date
+      avatarUrl: photoUrl.trim() || undefined,
+      birthdate: birthdate || undefined,
       jobTitle: jobTitle.trim() || undefined,
       phone: phone.trim() || undefined,
     };
 
     setLoading(true);
-    // ...
     const success = await register({ email, password, ...extras });
-// ...
-
     setLoading(false);
 
     if (success) {
@@ -70,80 +66,132 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+    <div className="min-h-screen flex items-center justify-center theme-bg transition-colors duration-500 px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-4"
+        className="theme-card w-full max-w-md rounded-2xl shadow-xl border border-[rgb(var(--color-border))] p-8 space-y-5"
       >
-        <h2 className="text-2xl font-bold">Crear cuenta</h2>
+        <h2 className="text-2xl font-semibold text-[rgb(var(--color-fg))]">
+          Crear cuenta
+        </h2>
 
         <div className="grid grid-cols-1 gap-3">
-          <input
-            type="email"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            autoComplete="email"
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Correo electrónico</span>
+            <input
+              type="email"
+              placeholder="correo@ejemplo.com"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              autoComplete="email"
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
 
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Contraseña</span>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
 
           {/* Campos nuevos */}
-          <input
-            type="text"
-            placeholder="Nombre y apellidos"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoComplete="name"
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Nombre y apellidos</span>
+            <input
+              type="text"
+              placeholder="Tu nombre"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
 
-          <input
-            type="url"
-            placeholder="Foto (URL)"
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Foto (URL)</span>
+            <input
+              type="url"
+              placeholder="https://…"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
 
-          <input
-            type="date"
-            placeholder="Fecha de nacimiento"
-            value={birthdate}
-            onChange={(e) => setBirthdate(e.target.value)}
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Fecha de nacimiento</span>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600"
+            />
+          </label>
 
-          <input
-            type="text"
-            placeholder="Puesto de trabajo"
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Puesto de trabajo</span>
+            <input
+              type="text"
+              placeholder="Ej. Desarrollador"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
 
-          <input
-            type="tel"
-            placeholder="Teléfono de contacto"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            autoComplete="tel"
-            className="w-full border border-gray-300 px-3 py-2 rounded"
-          />
+          <label className="block space-y-1">
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Teléfono de contacto</span>
+            <input
+              type="tel"
+              placeholder="+34 600 000 000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+              className="w-full rounded-lg border border-[rgb(var(--color-border))]
+                         bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
+                         px-3 py-2 outline-none transition
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600
+                         placeholder:text-gray-400 dark:placeholder:text-neutral-500"
+            />
+          </label>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full rounded-lg px-4 py-2 font-medium text-white transition
+                     bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-indigo-400
+                     disabled:opacity-60 disabled:cursor-not-allowed
+                     dark:bg-emerald-600 dark:hover:bg-emerald-500"
         >
           {loading ? "Registrando..." : "Registrarse"}
         </button>

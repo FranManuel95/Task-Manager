@@ -5,12 +5,33 @@ import { validateTareaDeadline } from "./tareas.helpers";
 import { locateProyecto, canEditProyecto } from "./proyectos.helpers";
 import { api } from "../services/api";
 
+/** Helpers de normalización fuerte (evitan .trim de no-strings) */
+function normTitle(input: unknown): string {
+  return String(input ?? "").trim();
+}
+function normDesc(input: unknown): string {
+  return String(input ?? "").trim();
+}
+function normPrioridad(p: unknown): Prioridad {
+  return p === "alta" || p === "baja" ? (p as Prioridad) : "media";
+}
+function normDeadline(d: unknown): string | null {
+  const v = d == null || d === "" ? null : String(d);
+  return v;
+}
+function normEtiquetas(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
+}
+
 export const createTareaActions = (set: any, get: () => TareasStore) => ({
   agregarTarea: (
     proyectoId: string,
     estado: Estado,
-    titulo: string,
-    deadline: string | null = null
+    tituloInput: unknown,
+    deadlineInput: unknown = null
   ): void => {
     const email = get().usuarioActual;
     if (!email) return;
@@ -20,6 +41,12 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
 
     const { ownerEmail, proyecto } = loc;
     if (!canEditProyecto(email, proyecto)) return;
+
+    // NORMALIZACIONES
+    const titulo = normTitle(tituloInput);
+    const deadline = normDeadline(deadlineInput);
+
+    if (!titulo) return; // no crear tareas vacías
 
     if (!validateTareaDeadline(deadline, proyecto.deadline)) return;
 
@@ -57,7 +84,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
           titulo,
           descripcion: "",
           prioridad: "media",
-          deadline: deadline ?? null,
+          deadline,
           etiquetas: [],
         });
 
@@ -68,7 +95,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
 
           const { ownerEmail: owner2, proyecto: p2 } = loc2;
 
-          const reemplazar = (col: Tarea[]) =>
+          const replaceIn = (col: Tarea[]) =>
             col.map((t) => (t.id === tempId ? { ...created } : t));
 
           return {
@@ -80,9 +107,9 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
                   ...p2,
                   tareas: {
                     ...p2.tareas,
-                    "por-hacer": reemplazar(p2.tareas["por-hacer"]),
-                    "en-progreso": reemplazar(p2.tareas["en-progreso"]),
-                    "completado": reemplazar(p2.tareas["completado"]),
+                    "por-hacer": replaceIn(p2.tareas["por-hacer"]),
+                    "en-progreso": replaceIn(p2.tareas["en-progreso"]),
+                    "completado": replaceIn(p2.tareas["completado"]),
                   },
                 },
               },
@@ -99,11 +126,11 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     proyectoId: string,
     columnaId: Estado,
     tareaId: string,
-    nuevoTitulo: string,
-    nuevaDescripcion: string,
-    prioridad: Prioridad,
-    deadline: string | null,
-    etiquetas: string[]
+    nuevoTituloInput: unknown,
+    nuevaDescripcionInput: unknown,
+    prioridadInput: unknown,
+    deadlineInput: unknown,
+    etiquetasInput: unknown
   ): void => {
     const email = get().usuarioActual;
     if (!email) return;
@@ -114,13 +141,20 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     const { ownerEmail, proyecto } = loc;
     if (!canEditProyecto(email, proyecto)) return;
 
+    // NORMALIZACIONES
+    const nuevoTitulo = normTitle(nuevoTituloInput);
+    const nuevaDescripcion = normDesc(nuevaDescripcionInput);
+    const prioridad = normPrioridad(prioridadInput);
+    const deadline = normDeadline(deadlineInput);
+    const etiquetas = normEtiquetas(etiquetasInput);
+
     if (!validateTareaDeadline(deadline, proyecto.deadline)) return;
 
     const nuevasTareasColumna = proyecto.tareas[columnaId].map((t) =>
       t.id === tareaId
         ? {
             ...t,
-            titulo: nuevoTitulo,
+            titulo: nuevoTitulo || t.titulo, // evita vaciar título
             descripcion: nuevaDescripcion,
             prioridad,
             deadline,
@@ -150,10 +184,10 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     void (async () => {
       try {
         await api.updateTarea(proyectoId, tareaId, {
-          titulo: nuevoTitulo,
+          titulo: nuevoTitulo || undefined,
           descripcion: nuevaDescripcion,
           prioridad,
-          deadline: deadline ?? null,
+          deadline,
           etiquetas,
         });
       } catch (err) {

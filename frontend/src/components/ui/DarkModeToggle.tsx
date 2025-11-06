@@ -1,11 +1,20 @@
+// src/components/ui/DarkModeToggle.tsx
 import { useEffect, useState } from "react";
 
-export default function DarkModeToggle() {
-  const getPref = () =>
-    localStorage.getItem("theme") ??
-    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+function getInitialTheme(): "light" | "dark" {
+  const stored = (typeof window !== "undefined" && localStorage.getItem("theme")) as
+    | "light"
+    | "dark"
+    | null;
+  if (stored) return stored;
+  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+  return "light";
+}
 
-  const [theme, setTheme] = useState<"light" | "dark">(getPref() as "light" | "dark");
+export default function DarkModeToggle({ className = "" }: { className?: string }) {
+  const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -17,11 +26,15 @@ export default function DarkModeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-200"
-      title="Cambiar tema"
-      aria-label="Cambiar tema claro/oscuro"
+      className={[
+        "inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm transition",
+        "border-black/10 bg-white/80 hover:bg-white dark:border-white/10 dark:bg-gray-900/70 dark:hover:bg-gray-900",
+        className,
+      ].join(" ")}
+      title={theme === "dark" ? "Cambiar a claro" : "Cambiar a oscuro"}
+      aria-label="Cambiar tema"
     >
-      {theme === "dark" ? "🌙 Oscuro" : "☀️ Claro"}
+      {theme === "dark" ? "🌙" : "☀️"}
     </button>
   );
 }

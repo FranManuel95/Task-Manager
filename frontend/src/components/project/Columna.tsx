@@ -1,7 +1,6 @@
-import { useState, ChangeEvent } from "react";
+// src/components/project/Columna.tsx
 import { useDroppable } from "@dnd-kit/core";
 import { AnimatePresence } from "motion/react";
-
 import Tarea from "./Tarea";
 import { columnaColors } from "./constantes";
 import { Estado, Tarea as TareaModel, Prioridad } from "../../types";
@@ -11,7 +10,6 @@ type Props = {
   titulo: string;
   tareas: TareaModel[];
   proyectoId: string;
-  onAgregar: (proyectoId: string, estado: Estado, titulo: string) => void;
   onEliminar: (proyectoId: string, estado: Estado, tareaId: string) => void;
   onEditar: (
     proyectoId: string,
@@ -23,6 +21,8 @@ type Props = {
     deadline: string | null,
     etiquetas: string[]
   ) => void;
+  /** nuevo callback para abrir modal desde Project */
+  onEditRequest: (tarea: TareaModel, parent: Estado) => void;
   proyectoDeadline?: string | null;
 };
 
@@ -31,34 +31,24 @@ export default function Columna({
   titulo,
   tareas,
   proyectoId,
-  onAgregar,
   onEliminar,
   onEditar,
+  onEditRequest,
   proyectoDeadline,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id });
-  const [nuevaTarea, setNuevaTarea] = useState("");
-
-  const handleAgregar = () => {
-    const tituloLimpio = nuevaTarea.trim();
-    if (!tituloLimpio) return;
-    onAgregar(proyectoId, id, tituloLimpio);
-    setNuevaTarea("");
-  };
 
   return (
     <section
       ref={setNodeRef}
       className={[
-        "rounded-2xl theme-card shadow-card hover:shadow-hover transition-all duration-500"
-,
+        "rounded-2xl theme-card shadow-card hover:shadow-hover transition-all duration-500",
         isOver
           ? "border-indigo-300 ring-4 ring-indigo-100 dark:ring-indigo-900/40"
           : "border-gray-200",
       ].join(" ")}
       aria-label={`Columna ${titulo}`}
     >
-      {/* Header */}
       <header
         className={[
           "flex items-center justify-between gap-3",
@@ -75,8 +65,7 @@ export default function Columna({
         </h2>
       </header>
 
-      {/* Lista de tareas */}
-      <div className="p-3 space-y-2 min-h-[180px]">
+      <div className="min-h-[180px] space-y-2 p-3">
         <AnimatePresence>
           {tareas.map((tarea) => (
             <Tarea
@@ -85,7 +74,7 @@ export default function Columna({
               tarea={tarea}
               parent={id}
               onEliminar={onEliminar}
-              onEditar={onEditar}
+              onEditRequest={onEditRequest}
               proyectoDeadline={proyectoDeadline ?? null}
             />
           ))}
@@ -96,30 +85,6 @@ export default function Columna({
             Sin tareas aquí todavía
           </p>
         )}
-      </div>
-
-      {/* Añadir nueva tarea */}
-      <div className="px-3 pb-3">
-        <div className="flex items-start gap-2">
-          <label className="sr-only" htmlFor={`new-task-${id}`}>Nueva tarea</label>
-          <input
-            id={`new-task-${id}`}
-            type="text"
-            value={nuevaTarea}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setNuevaTarea(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:ring-indigo-900/40"
-            placeholder="Añadir tarea…"
-            onKeyDown={(e) => e.key === "Enter" && handleAgregar()}
-            aria-label={`Añadir tarea a ${titulo}`}
-          />
-          <button
-            onClick={handleAgregar}
-            className="inline-flex h-9 items-center justify-center rounded-xl bg-indigo-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-indigo-900/50"
-            disabled={!nuevaTarea.trim()}
-          >
-            Agregar
-          </button>
-        </div>
       </div>
     </section>
   );
