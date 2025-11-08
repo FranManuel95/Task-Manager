@@ -115,18 +115,17 @@ export default function NewTaskModal({
             <label className="text-sm">
               <span className="mb-1 block text-xs opacity-70">Columna</span>
               <select
-                value={estado}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                  setEstado(e.target.value as Estado)
-                }
-                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-              >
-                {ESTADOS_UI.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.titulo}
-                  </option>
-                ))}
-              </select>
+  value={estado}
+  onChange={(e) => setEstado(e.target.value as Estado)}
+  className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400
+             dark:[color-scheme:dark]"
+>
+  {ESTADOS_UI.map((e) => (
+    <option key={e.id} value={e.id}>
+      {e.titulo}
+    </option>
+  ))}
+</select>
             </label>
 
             <label className="text-sm">
@@ -134,9 +133,9 @@ export default function NewTaskModal({
               <select
                 value={prioridad}
                 onChange={(e) => setPrioridad(e.target.value as Prioridad)}
-                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 dark:text-white dark:bg-neutral-900"
               >
-                <option value="alta">Alta</option>
+                <option className=" dark:text-white dark:bg-neutral-900" value="alta">Alta</option>
                 <option value="media">Media</option>
                 <option value="baja">Baja</option>
               </select>

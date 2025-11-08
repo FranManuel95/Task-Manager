@@ -33,7 +33,7 @@ export default function ProfileMenu({ showGoProjects = false }: { showGoProjects
     <div className="relative" ref={ref}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="inline-flex items-center justify-center rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 hover:bg-[rgb(var(--color-card))]/80 transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        className="inline-flex items-center justify-center rounded-full border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-2 hover:cursor-pointer transition hover:border-gray-500 focus:ring-indigo-400 focus:ring-2 dark:hover:bg-gray-400 dark:hover:cursor-pointer"
         aria-haspopup="menu" aria-expanded={open} aria-label="Abrir menú de usuario" title={displayName}
       >
         {ProfileIcon}
@@ -41,18 +41,18 @@ export default function ProfileMenu({ showGoProjects = false }: { showGoProjects
 
       {open && (
         <div role="menu" className="absolute right-0 mt-2 w-64 rounded-xl theme-card shadow-card overflow-hidden border border-[rgb(var(--color-border))]">
-          <div className="px-3 py-2 text-xs text-gray-500">
+          <div className="px-3 py-2 text-xs text-gray-500 ">
             Sesión iniciada como
             <div className="mt-0.5 truncate font-medium text-[rgb(var(--color-fg))]">{displayName}</div>
-            {email && <div className="truncate text-[11px] text-gray-500">{email}</div>}
+          
           </div>
           <div className="h-px bg-[rgb(var(--color-border))]" />
           {showGoProjects && (
-            <Link to="/dashboard" className="block px-3 py-2 text-sm hover:bg-[rgb(var(--color-card))]/70 transition" role="menuitem">
-              Ir a proyectos
+            <Link to="/dashboard" className="block px-3 py-2 text-sm hover:cursor-pointer hover:border-gray-500 dark:hover:gray-200 dark:hover:cursor-pointer transition" role="menuitem">
+              Volver a proyectos
             </Link>
           )}
-          <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm hover:bg-[rgb(var(--color-card))]/70 transition" role="menuitem">
+          <button onClick={handleLogout} className="hover:cursor-pointer w-full text-left px-3 py-2 text-sm hover:bg-[rgb(var(--color-card))]/70 transition" role="menuitem">
             Cerrar sesión
           </button>
         </div>

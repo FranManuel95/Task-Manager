@@ -161,12 +161,7 @@ export const api = {
       text,
     }),
 
-  /**
-   * Chat — Threads (DMs).
-   * Estas rutas requieren soporte en tu backend. Si no existen:
-   * - getThreadHistory devolverá []
-   * - sendThreadMessage lanzará ApiError(404)
-   */
+  /** Chat — Threads (DMs) */
   getThreadHistory: async (proyectoId: string, threadId: string) => {
     try {
       const path = `/api/proyectos/${encodeURIComponent(
@@ -210,8 +205,11 @@ export const api = {
   },
 
   /** Auditoría */
-  getAudit: (proyectoId: string) =>
-    http.get<AuditItem[]>(`/api/proyectos/${encodeURIComponent(proyectoId)}/audit`),
+  getAudit: async (proyectoId: string) => {
+    const res = await http.get<any>(`/api/proyectos/${encodeURIComponent(proyectoId)}/audit`);
+    const page = normalizeAuditPage(res);
+    return page.items;
+  },
 };
 
 /* ----------------- Auth ----------------- */
@@ -221,7 +219,7 @@ export type RegisterPayload = {
   password: string;
   name?: string;
   avatarUrl?: string;
-  birthdate?: string; // yyyy-mm-dd
+  birthdate?: string;
   jobTitle?: string;
   phone?: string;
 };
@@ -255,11 +253,22 @@ export const authApi = {
   logout: () => http.post<void>("/api/auth/logout"),
 };
 
-/* ----------------- Auditoría: tipos auxiliares ----------------- */
+/* ----------------- Auditoría ----------------- */
+
+export type AuditDiff = Record<string, { before: any; after: any }>;
+
+export type AuditPayload = {
+  entityName?: string | null;
+  before?: Record<string, any> | null;
+  after?: Record<string, any> | null;
+  diff?: AuditDiff | null;
+} | null;
 
 export type AuditItem = {
   id: string;
-  ts: string;
+  ts?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
   proyectoId: string;
   entity: string;
   entityId: string | null;
@@ -267,13 +276,7 @@ export type AuditItem = {
   actorEmail: string;
   actorName?: string | null;
   displayName?: string | null;
-
-  payload?: {
-    entityName?: string | null;
-    before?: Record<string, any>;
-    after?: Record<string, any>;
-    diff?: Record<string, { before: any; after: any }>;
-  } | null;
+  payload?: AuditPayload;
 };
 
 export type AuditPage = {
@@ -281,10 +284,64 @@ export type AuditPage = {
   nextCursor?: string | null;
 };
 
+function pickDisplayNameLike(item: AuditItem): string | null {
+  const p = item.payload ?? undefined;
+  const before = (p?.before ?? undefined) as Record<string, any> | undefined;
+  const after = (p?.after ?? undefined) as Record<string, any> | undefined;
+  const diff = (p?.diff ?? undefined) as Record<string, any> | undefined;
+
+  const fromAfter = (after && (after.nombre || after.titulo || after.entityName)) || null;
+  if (fromAfter) return String(fromAfter);
+
+  const fromBefore = (before && (before.nombre || before.titulo || before.entityName)) || null;
+  if (fromBefore) return String(fromBefore);
+
+  const fromDiff =
+    (diff &&
+      (diff.nombre?.after || diff.titulo?.after || diff.entityName?.after)) ||
+    null;
+  if (fromDiff) return String(fromDiff);
+
+  if (p?.entityName) return String(p.entityName);
+  if (item.displayName) return String(item.displayName);
+  return null;
+}
+
+function normalizeAuditItem(raw: any): AuditItem {
+  const item: AuditItem = {
+    ...raw,
+    payload: {
+      entityName: raw?.payload?.entityName ?? null,
+      before: raw?.payload?.before ?? null,
+      after: raw?.payload?.after ?? null,
+      diff: raw?.payload?.diff ?? null,
+    },
+  };
+
+  item.ts = item.ts ?? item.createdAt ?? item.created_at ?? null;
+
+  if (!item.displayName) {
+    const dn = pickDisplayNameLike(item);
+    if (dn) item.displayName = dn;
+  }
+
+  return item;
+}
+
+function normalizeAuditPage(res: any): AuditPage {
+  const items = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : [];
+  return {
+    items: items.map(normalizeAuditItem),
+    nextCursor: res?.nextCursor ?? null,
+  };
+}
+
 export const audit = {
-  list: (proyectoId: string, params?: { limit?: number; cursor?: string }) =>
-    http.get<{ items: any[]; nextCursor: string | null }>(
+  list: async (proyectoId: string, params?: { limit?: number; cursor?: string }) => {
+    const res = await http.get<any>(
       `/api/proyectos/${encodeURIComponent(proyectoId)}/audit`,
       params as any
-    ),
+    );
+    return normalizeAuditPage(res);
+  },
 };

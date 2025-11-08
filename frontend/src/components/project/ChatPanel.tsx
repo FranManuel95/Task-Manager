@@ -139,13 +139,13 @@ export default function ChatPanel({ chatId, proyectoId, className = "" }: Props)
               handleSend();
             }
           }}
-          className="flex-1 resize-none rounded border px-3 py-2 text-sm dark:bg-neutral-950 dark:border-neutral-800"
+          className="flex-1 resize-none rounded border px-3 py-2 text-sm dark:bg-neutral-950 dark:border-neutral-800 "
           rows={2}
           placeholder="Escribe un mensaje (Enter para enviar, Shift+Enter para salto de línea)"
         />
         <button
           onClick={handleSend}
-          className="self-end bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+          className="self-end bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 hover:cursor-pointer disabled:opacity-50"
           disabled={!text.trim()}
         >
           Enviar

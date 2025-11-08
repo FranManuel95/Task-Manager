@@ -45,7 +45,7 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="theme-card w-full max-w-md rounded-2xl shadow-xl border border-[rgb(var(--color-border))] p-8 space-y-5"
       >
-        <h2 className="text-2xl font-semibold text-[rgb(var(--color-fg))]">
+        <h2 className="text-2xl font-semibold text-[rgb(var(--color-fg))] ">
           Iniciar sesión
         </h2>
 
@@ -84,7 +84,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className={`w-full rounded-lg px-4 py-2 font-medium text-white transition
+          className={`hover:cursor-pointer w-full rounded-lg px-4 py-2 font-medium text-white transition
                       focus:outline-none focus:ring-2 focus:ring-indigo-400
                       ${loading
                         ? "bg-neutral-400 cursor-not-allowed"

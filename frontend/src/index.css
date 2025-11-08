@@ -33,5 +33,26 @@ body,
     color: rgb(var(--color-fg));
     border: 1px solid rgb(var(--color-border));
   }
+  .dark select {
+    color-scheme: dark;
+    color: #fff;
+    background-color: rgb(var(--color-card));
+  }
+  .dark .date-input::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.2);
+}
+/* Cursor mano sólo sobre el icono del date picker (Chrome/Edge/Safari) */
+  .date-icon-pointer::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+
+  /* Opcionales: también mano sobre el botón limpiar y ocultar spinners */
+  .date-icon-pointer::-webkit-clear-button {
+    cursor: pointer;
+  }
+  .date-icon-pointer::-webkit-inner-spin-button {
+    display: none;
+  }
+
 }
 

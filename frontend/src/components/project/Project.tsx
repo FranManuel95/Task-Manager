@@ -67,7 +67,7 @@ function ActivityOverlay({
         transition={{ duration: 0.2 }}
         className="relative mx-4 h-[85vh] w-[min(1100px,92vw)] overflow-hidden rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] shadow-2xl"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-[rgb(var(--color-border))] px-4 py-3 dark:text-neutral-50">
           <div className="flex items-center gap-2">
             <span className="text-lg">📝</span>
             <h2 id="activity-dialog-title" className="text-base font-semibold">
@@ -75,17 +75,17 @@ function ActivityOverlay({
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ">
             <button
               onClick={onRefresh}
-              className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm hover:cursor-pointer  transition hover:border-gray-500"
               title="Actualizar actividad"
             >
               Actualizar
             </button>
             <button
               onClick={onClose}
-              className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              className="rounded-lg border border-[rgb(var(--color-border))] px-2.5 py-1.5 text-sm hover:cursor-pointer  transition hover:border-gray-500"
               aria-label="Cerrar"
               title="Cerrar"
             >
@@ -133,7 +133,7 @@ function InviteInner({ onInvite }: { onInvite: (email: string) => void }) {
           }
           onInvite(val);
         }}
-        className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+        className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 hover:cursor-pointer hover:border-gray-500"
       >
         Añadir
       </button>
@@ -237,14 +237,14 @@ export default function Project() {
   return (
     <div className="p-6 theme-bg min-h-screen transition-colors duration-500 relative">
       {/* ===== Header ===== */}
-      <header className="sticky top-0 z-10 -mx-4 mb-6 border dark:border-neutral-700 bg-[rgb(var(--color-card))]/80 px-4 py-4 backdrop-blur md:mx-0 md:mt-4 md:rounded-b-xl md:border">
-        <TopBar title="Gestor de Tareas" showBack />
+      <header className="sticky top-0 z-10 -mx-4 mb-6 border border-gray-200 dark:border-neutral-700 bg-[rgb(var(--color-card))]/80 px-4 py-4 backdrop-blur md:mx-0 md:mt-4 md:rounded-b-xl md:border">
+        <TopBar title="Gestor de Tareas" showGoProjects />
 
         {/* Identidad + acciones */}
         <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           {/* Identidad */}
           <div className="flex items-center gap-3">
-            <span className="text-3xl">📁</span>
+            <span className="mb-1 text-3xl">📁</span>
             <div>
               <h1 className="text-xl font-semibold leading-tight md:text-2xl">
                 {proyecto.nombre}
@@ -279,7 +279,7 @@ export default function Project() {
             {/* Invitar */}
             <button
               onClick={() => setInviteOpen(true)}
-              className="ml-2 inline-flex items-center rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              className="dark:hover:bg-gray-400  ml-2 inline-flex items-center rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm hover:cursor-pointer transition hover:border-gray-500"
             >
               Invitar colaborador
             </button>
@@ -287,7 +287,7 @@ export default function Project() {
             {/* Actividad */}
             <button
               onClick={() => setActivityOpenOverlay(true)}
-              className="inline-flex items-center rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              className="dark:hover:bg-gray-400 hover:cursor-pointer inline-flex items-center rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm  transition hover:border-gray-500"
             >
               Actividad
             </button>
@@ -295,9 +295,9 @@ export default function Project() {
             {/* Crear tarea */}
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition"
+              className="inline-flex items-center rounded-xl bg-blue-600 hover:cursor-pointer px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition"
             >
-              + Nueva tarea
+              Nueva tarea
             </button>
 
             {/* Deadline del proyecto */}
@@ -312,7 +312,7 @@ export default function Project() {
         {/* ===== Toolbar ===== */}
         <div className="mt-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <label className="relative w-full md:w-auto md:flex-1">
+            <label className="relative w-full md:w-auto md:flex-1 focus:ring-indigo-400">
               <input
                 id="project-search"
                 type="text"
@@ -320,21 +320,21 @@ export default function Project() {
                 placeholder="Buscar tareas por título…"
                 value={searchTerm}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-400"
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-indigo-400 focus:ring-2 hover:border-gray-500"
               />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 focus:ring-indigo-400">
                 ⌘K
               </span>
             </label>
 
-            <label className="md:w-60">
+            <label className="md:w-60 ">
               <select
                 aria-label="Filtrar por prioridad"
                 value={filterPrioridad}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   setFilterPrioridad(e.target.value as Prioridad | "todas")
                 }
-                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-400"
+                className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-indigo-400 focus:ring-2  hover:cursor-pointer hover:border-gray-500"
               >
                 <option value="todas">Todas las prioridades</option>
                 <option value="alta">Alta</option>
@@ -498,12 +498,12 @@ export default function Project() {
             }}
           >
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <div className="relative w-[min(480px,94vw)] rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-2xl">
+            <div className="relative w-[min(480px,94vw)] rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-2xl dark:text-white">
               <header className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Invitar colaborador</h3>
                 <button
                   onClick={() => setInviteOpen(false)}
-                  className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-sm hover:bg-[rgb(var(--color-card))]/70"
+                  className="rounded-lg border border-[rgb(var(--color-border))] px-2 py-1 text-sm hover:cursor-pointer  transition hover:border-gray-500"
                 >
                   ✕
                 </button>

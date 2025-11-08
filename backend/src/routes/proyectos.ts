@@ -57,6 +57,23 @@ function tareaSnapshot(t: {
   };
 }
 
+/* --- snapshot de proyecto --- */
+function projectSnapshot(p: {
+  nombre: string;
+  descripcion: string | null;
+  color: string;
+  deadline: Date | null;
+  usuarios: string[] | null;
+}) {
+  return {
+    nombre: p.nombre,
+    descripcion: p.descripcion ?? "",
+    color: p.color,
+    deadline: p.deadline ? p.deadline.toISOString() : null,
+    usuarios: p.usuarios ?? [],
+  };
+}
+
 function computeDiff(before: any, after: any) {
   const out: Record<string, { before: any; after: any }> = {};
   const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})]);
@@ -142,7 +159,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
         creadoPor: true,
         usuarios: true,
       },
-      orderBy: { createdAt: "asc" }, // o { id: "asc" }
+      orderBy: { createdAt: "asc" },
     });
 
     const items = proyectos.map((p) => ({
@@ -294,13 +311,17 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       },
     });
 
+    // auditoría: create con after y entityName
     auditLogSafe({
       proyectoId: created.id,
       entity: "proyecto",
       entityId: created.id,
       action: "create",
       actorEmail: email,
-      payload: { nombre, color, deadline },
+      entityName: created.nombre,
+      payload: {
+        after: projectSnapshot(created),
+      },
     });
 
     res.status(201).json({
@@ -326,6 +347,14 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
     const membership = await ensureMember(id, email);
     if (!membership.ok) return res.status(membership.code).json({ error: "Forbidden" });
 
+    // before
+    const beforeRow = await db.proyecto.findUnique({
+      where: { id },
+      select: { nombre: true, descripcion: true, color: true, deadline: true, usuarios: true },
+    });
+    if (!beforeRow) return res.status(404).json({ error: "Proyecto no encontrado" });
+    const before = projectSnapshot(beforeRow);
+
     const body = req.body ?? {};
     const data: Prisma.ProyectoUpdateInput = {};
     if (typeof body.nombre === "string") data.nombre = body.nombre;
@@ -347,13 +376,18 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
       },
     });
 
+    // after + diff
+    const after = projectSnapshot(updated);
+    const diff = computeDiff(before, after);
+
     auditLogSafe({
       proyectoId: id,
       entity: "proyecto",
       entityId: id,
       action: "update",
       actorEmail: email,
-      payload: body,
+      entityName: updated.nombre,
+      payload: { before, after, diff },
     });
 
     res.json({
@@ -381,10 +415,12 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
 
     const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { id: true, creadoPor: true },
+      select: { id: true, creadoPor: true, nombre: true, descripcion: true, color: true, deadline: true, usuarios: true },
     });
     if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
     if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
+
+    const before = projectSnapshot(proj);
 
     await db.$transaction([
       db.tarea.deleteMany({ where: { proyectoId: id } }),
@@ -399,6 +435,8 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
       entityId: id,
       action: "delete",
       actorEmail: email,
+      entityName: proj.nombre,
+      payload: { before },
     });
 
     res.status(204).end();
@@ -426,7 +464,7 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
 
     const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { usuarios: true, creadoPor: true },
+      select: { usuarios: true, creadoPor: true, nombre: true, descripcion: true, color: true, deadline: true },
     });
     if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
     if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
@@ -435,10 +473,20 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
       return res.status(204).end();
     }
 
+    const before = projectSnapshot({ ...proj, usuarios: proj.usuarios ?? [] });
+
     await db.proyecto.update({
       where: { id },
       data: { usuarios: { push: toAdd } },
     });
+
+    const updated = await db.proyecto.findUnique({
+      where: { id },
+      select: { nombre: true, descripcion: true, color: true, deadline: true, usuarios: true },
+    });
+
+    const after = projectSnapshot(updated!);
+    const diff = computeDiff(before, after);
 
     auditLogSafe({
       proyectoId: id,
@@ -446,7 +494,8 @@ router.post("/:id/usuarios", async (req: Request, res: Response, next: NextFunct
       entityId: id,
       action: "add-collaborator",
       actorEmail: email,
-      payload: { collaborator: toAdd },
+      entityName: updated!.nombre,
+      payload: { before, after, diff },
     });
 
     res.status(204).end();
@@ -464,7 +513,7 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
 
     const proj = await db.proyecto.findUnique({
       where: { id },
-      select: { usuarios: true, creadoPor: true },
+      select: { usuarios: true, creadoPor: true, nombre: true, descripcion: true, color: true, deadline: true },
     });
     if (!proj) return res.status(404).json({ error: "Proyecto no encontrado" });
     if (proj.creadoPor !== email) return res.status(403).json({ error: "Forbidden" });
@@ -474,11 +523,21 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
       return res.status(204).end();
     }
 
+    const before = projectSnapshot({ ...proj, usuarios: current });
+
     const next = current.filter((u) => u !== target);
     await db.proyecto.update({
       where: { id },
       data: { usuarios: { set: next } },
     });
+
+    const updated = await db.proyecto.findUnique({
+      where: { id },
+      select: { nombre: true, descripcion: true, color: true, deadline: true, usuarios: true },
+    });
+
+    const after = projectSnapshot(updated!);
+    const diff = computeDiff(before, after);
 
     auditLogSafe({
       proyectoId: id,
@@ -486,7 +545,8 @@ router.delete("/:id/usuarios/:email", async (req: Request, res: Response, next: 
       entityId: id,
       action: "remove-collaborator",
       actorEmail: email,
-      payload: { collaborator: target },
+      entityName: updated!.nombre,
+      payload: { before, after, diff },
     });
 
     res.status(204).end();
@@ -875,17 +935,32 @@ router.get("/:id/audit", async (req: Request, res: Response, next: NextFunction)
         : [];
       const nameByEmail = Object.fromEntries(users.map((u) => [u.email, u.name]));
 
-      const needTitle = items.filter(
+      // Resolver títulos de tareas si falta entityName
+      const needTaskTitle = items.filter(
         (r: any) => r.entity === "tarea" && r.entityId && !(r.payload as any)?.entityName
       );
-      let titleById: Record<string, string> = {};
-      if (needTitle.length) {
-        const ids: string[] = Array.from(new Set(needTitle.map((r: any) => String(r.entityId))));
+      let taskTitleById: Record<string, string> = {};
+      if (needTaskTitle.length) {
+        const ids: string[] = Array.from(new Set(needTaskTitle.map((r: any) => String(r.entityId))));
         const tareasRows = await db.tarea.findMany({
           where: { id: { in: ids } },
           select: { id: true, titulo: true },
         });
-        titleById = Object.fromEntries(tareasRows.map((t) => [t.id, t.titulo]));
+        taskTitleById = Object.fromEntries(tareasRows.map((t) => [t.id, t.titulo]));
+      }
+
+      // Resolver nombres de proyectos si falta entityName
+      const needProjectName = items.filter(
+        (r: any) => r.entity === "proyecto" && r.entityId && !(r.payload as any)?.entityName
+      );
+      let projectNameById: Record<string, string> = {};
+      if (needProjectName.length) {
+        const ids: string[] = Array.from(new Set(needProjectName.map((r: any) => String(r.entityId))));
+        const projRows = await db.proyecto.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, nombre: true },
+        });
+        projectNameById = Object.fromEntries(projRows.map((p) => [p.id, p.nombre]));
       }
 
       res.json({
@@ -893,7 +968,8 @@ router.get("/:id/audit", async (req: Request, res: Response, next: NextFunction)
           const pld = r.payload as any;
           const displayName =
             pld?.entityName ??
-            (r.entity === "tarea" && r.entityId ? titleById[String(r.entityId)] ?? null : null);
+            (r.entity === "tarea" && r.entityId ? taskTitleById[String(r.entityId)] ?? null : null) ??
+            (r.entity === "proyecto" && r.entityId ? projectNameById[String(r.entityId)] ?? null : null);
 
           return {
             id: r.id,

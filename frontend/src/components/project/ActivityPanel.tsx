@@ -1,39 +1,94 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, ReactNode } from "react";
 import { audit, type AuditItem } from "../../services/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { safeParseDate } from "../../lib/date";
 
+// Mapea claves -> etiquetas legibles (tarea + proyecto)
 const FIELD_LABELS: Record<string, string> = {
+  // Tarea
   titulo: "título",
   descripcion: "descripción",
   prioridad: "prioridad",
   deadline: "fecha límite",
   estado: "estado",
   etiquetas: "etiquetas",
+
+  // Proyecto
+  nombre: "nombre",
+  color: "color",
+  usuarios: "usuarios",
+  creadoPor: "creado por",
+  creadoPorName: "creado por (nombre)",
 };
 
-// --- helpers de formateo de valores (aplica fecha SOLO como dd MMM yyyy) ---
+// Estados más comunes (ajusta si usas otros)
+const ESTADO_LABEL: Record<string, string> = {
+  "por-hacer": "Por hacer",
+  "en-progreso": "En progreso",
+  "bloqueado": "Bloqueado",
+  "completado": "Completado",
+};
+
+// Prioridad legible
+const PRIORIDAD_LABEL: Record<string, string> = {
+  alta: "Alta",
+  media: "Media",
+  baja: "Baja",
+};
+
+// --- helpers de formateo ---
 function isDateLikeString(s: string) {
-  // "YYYY-MM-DD" o ISO con tiempo
-  return (
-    /^\d{4}-\d{2}-\d{2}$/.test(s) ||
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)
-  );
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
 }
 
-function fmtValue(val: any, field?: string): string {
-  // Para deadline, si recibimos string fecha/ISO -> dd MMM yyyy
+/** Render genérico de valores (puede devolver nodos ricos) */
+function fmtValue(val: any, field?: string): ReactNode {
   if (field === "deadline" && typeof val === "string" && isDateLikeString(val)) {
     const d = safeParseDate(val);
     return d ? format(d, "dd MMM yyyy", { locale: es }) : val;
   }
 
+  if (field === "estado" && typeof val === "string") {
+    return ESTADO_LABEL[val] ?? val;
+  }
+
+  if (field === "prioridad" && typeof val === "string") {
+    return PRIORIDAD_LABEL[val] ?? val;
+  }
+
+  if (field === "color" && typeof val === "string" && /^#?[0-9a-f]{6}$/i.test(val)) {
+    const hex = val.startsWith("#") ? val : `#${val}`;
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span
+          aria-label={`Color ${hex}`}
+          title={hex}
+          className="inline-block w-4 h-4 rounded-full border border-[rgb(var(--color-border))]"
+          style={{ backgroundColor: hex }}
+        />
+        <code>{hex}</code>
+      </span>
+    );
+  }
+
+  if (field === "etiquetas" && Array.isArray(val)) {
+    return (
+      <span className="inline-flex flex-wrap gap-1 align-middle">
+        {val.map((t: string, i: number) => (
+          <span
+            key={i}
+            className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-700 dark:bg-sky-950/30 dark:text-sky-300"
+          >
+            #{t}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
   if (val == null) return "—";
   if (Array.isArray(val)) return val.join(", ");
-
-  // Si es string genérico y parece fecha, SOLO la mostramos como fecha si el campo lo pide (deadline)
-  // Para otros campos, la dejamos tal cual.
   if (typeof val === "string") return val;
   if (typeof val === "object") return JSON.stringify(val);
   return String(val);
@@ -46,12 +101,35 @@ function fmtDiffAfter(val: any, field?: string) {
   return fmtValue(val, field);
 }
 
-function makeTitle(item: AuditItem) {
-  const name =
+/** Intenta obtener el nombre legible de la entidad (tarea/proyecto), incluso si cambió */
+function deriveEntityName(item: AuditItem): string {
+  const payload = ((item as any).payload ?? {}) as any;
+  const diff = payload?.diff;
+  const before = payload?.before;
+  const after = payload?.after;
+
+  // Preferimos nombre/titulo del AFTER (estado actual), luego BEFORE, luego diff
+  const fromAfter = after?.nombre || after?.titulo;
+  if (fromAfter) return String(fromAfter);
+
+  const fromBefore = before?.nombre || before?.titulo;
+  if (fromBefore) return String(fromBefore);
+
+  const fromDiff =
+    diff?.nombre?.after || diff?.titulo?.after || diff?.entityName?.after;
+  if (fromDiff) return String(fromDiff);
+
+  // fallback a lo que ya venías usando
+  return (
     item.displayName ||
-    (item.payload && (item.payload as any).entityName) ||
+    (payload && (payload as any).entityName) ||
     item.entityId ||
-    "—";
+    "—"
+  );
+}
+
+function makeTitle(item: AuditItem) {
+  const name = deriveEntityName(item);
   switch (item.action) {
     case "create":
       return `Creación de ${item.entity} · ${name}`;
@@ -66,23 +144,31 @@ function makeTitle(item: AuditItem) {
   }
 }
 
-function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
-  // Fallback: algunos backends devuelven createdAt en lugar de ts
-  const tsStr =
-    (item as any).ts ??
-    (item as any).createdAt ??
-    (item as any).created_at ??
-    null;
+/** Orden opcional de campos para que proyectos/tareas salgan con prioridad lógica */
+const FIELD_ORDER = [
+  "nombre",
+  "titulo",
+  "descripcion",
+  "estado",
+  "prioridad",
+  "deadline",
+  "etiquetas",
+  "color",
+  "usuarios",
+  "creadoPorName",
+  "creadoPor",
+];
 
+function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
+  const tsStr =
+    (item as any).ts ?? (item as any).createdAt ?? (item as any).created_at ?? null;
   const d = safeParseDate(tsStr);
-  // Solo FECHA (sin hora) para la marca temporal del evento
   const when = d ? format(d, "dd MMM yyyy", { locale: es }) : "—";
 
   const actor = item.actorName || item.actorEmail || "—";
   const payload = ((item as any).payload ?? {}) as any;
 
-  const isPlainObject = (o: any) =>
-    o && typeof o === "object" && !Array.isArray(o);
+  const isPlainObject = (o: any) => o && typeof o === "object" && !Array.isArray(o);
 
   const diff: Record<string, { before: any; after: any }> | undefined =
     isPlainObject(payload.diff) ? (payload.diff as any) : undefined;
@@ -121,6 +207,15 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
       type: "delete" as const,
     })) as any;
   }
+
+  // Ordena las filas con FIELD_ORDER como guía
+  rows.sort((a, b) => {
+    const ia = FIELD_ORDER.indexOf(a.fieldKey);
+    const ib = FIELD_ORDER.indexOf(b.fieldKey);
+    const sa = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+    const sb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+    return sa - sb || a.fieldKey.localeCompare(b.fieldKey);
+  });
 
   return (
     <div className="p-3 flex items-start gap-3 hover:bg-[rgb(var(--color-card))]/60 transition-colors duration-300">
@@ -202,7 +297,6 @@ export default function ActivityPanel({
     setLoading(true);
     try {
       const res = await audit.list(proyectoId, { cursor: cur ?? undefined, limit: 50 });
-      // Normalizamos por si el backend devuelve createdAt en lugar de ts
       const normalized = res.items.map((it: any) => ({
         ...it,
         ts: it.ts ?? it.createdAt ?? it.created_at ?? null,
@@ -228,13 +322,30 @@ export default function ActivityPanel({
     const term = q.trim().toLowerCase();
     return items.filter((it) => {
       if (action && it.action !== action) return false;
-
       if (!term) return true;
+
       const actor = (it.actorName || it.actorEmail || "").toLowerCase();
       const entity = (it.entity || "").toLowerCase();
-      const display = (it.displayName || "").toLowerCase();
-      const any = `${actor} ${entity} ${display}`.includes(term);
-      return any;
+
+      const payload = ((it as any).payload ?? {}) as any;
+      const diff = payload?.diff ?? {};
+      const before = payload?.before ?? {};
+      const after = payload?.after ?? {};
+
+      const display =
+        (it.displayName || "").toLowerCase() ||
+        String(deriveEntityName(it)).toLowerCase();
+
+      const nameHints = [
+        before?.nombre, after?.nombre, diff?.nombre?.before, diff?.nombre?.after,
+        before?.titulo, after?.titulo, diff?.titulo?.before, diff?.titulo?.after,
+      ]
+        .filter(Boolean)
+        .map((x: string) => String(x).toLowerCase())
+        .join(" ");
+
+      const hay = `${actor} ${entity} ${display} ${nameHints}`.includes(term);
+      return hay;
     });
   }, [items, q, action]);
 
@@ -245,7 +356,6 @@ export default function ActivityPanel({
 
   return (
     <div className={className}>
-      {/* Controles de filtro (solo si enableFilter) */}
       {enableFilter && (
         <div className="dark:text-white flex items-center gap-2 p-3 border-b border-[rgb(var(--color-border))]">
           <input
@@ -257,7 +367,7 @@ export default function ActivityPanel({
           <select
             value={action}
             onChange={(e) => setAction(e.target.value as any)}
-            className="w-36 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
+            className="hover:cursor-pointer hover:border-gray-500 w-36 rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition"
           >
             <option value="">Todas</option>
             <option value="create">Creación</option>
@@ -268,7 +378,6 @@ export default function ActivityPanel({
         </div>
       )}
 
-      {/* Lista */}
       <div className="divide-y divide-[rgb(var(--color-border))]">
         {shown.length === 0 && !loading && (
           <div className="p-4 text-sm text-gray-500 text-center">
@@ -285,11 +394,10 @@ export default function ActivityPanel({
         )}
       </div>
 
-      {/* Paginación local + remota */}
       <div className="flex items-center justify-between gap-2 border-t border-[rgb(var(--color-border))] p-3">
         <button
           onClick={() => setVisible((v) => Math.max(initialLimit, v - initialLimit))}
-          className="dark:text-white rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50"
+          className="hover:border-gray-500 dark:text-white rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50 hover:cursor-pointer"
           disabled={visible <= initialLimit}
         >
           Ver menos
@@ -303,7 +411,7 @@ export default function ActivityPanel({
           {visible < filtered.length && (
             <button
               onClick={() => setVisible((v) => v + initialLimit)}
-              className="rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition"
+              className="hover:border-gray-500 rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition hover:cursor-pointer"
             >
               Cargar más
             </button>

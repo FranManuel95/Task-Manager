@@ -1,14 +1,15 @@
-// src/components/layout/TopBar.tsx
 import DarkModeToggle from "../ui/DarkModeToggle";
 import ProfileMenu from "./ProfileMenu";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function TopBar({
   title,
   showBack = false,
+  showGoProjects = false, // <— usa esta prop
 }: {
   title: string;
   showBack?: boolean;
+  showGoProjects?: boolean;
 }) {
   const navigate = useNavigate();
   const backToProjects = () => {
@@ -17,29 +18,26 @@ export default function TopBar({
   };
 
   return (
-    <header className="sticky top-0 z-30 theme-card/80 backdrop-blur border-b dark:border-neutral-700">
+    <header className="sticky top-0 z-30 theme-card/80 backdrop-blur border-b border-gray-200 dark:border-neutral-700">
       <div className="flex items-center justify-between px-6 py-3">
-        {/* Izquierda */}
         <div className="flex items-center gap-3">
-          {showBack && (
-            <button
-              onClick={backToProjects}
-              className="inline-flex items-center gap-2 rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/80 transition focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              aria-label="Volver a proyectos"
-              title="Volver a proyectos"
-            >
-              <span aria-hidden>←</span>
-              <span className="hidden sm:inline">Volver a proyectos</span>
-            </button>
-          )}
           <h1 className="text-sm font-semibold">{title}</h1>
         </div>
 
-        {/* Derecha */}
         <div className="flex items-center gap-3">
+          {/* SOLO si showGoProjects es true */}
+          {showGoProjects && (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg border  px-3 py-1   transition border-black/10 bg-white/80 hover:border-gray-500 hover:cursor-pointer dark:border-white/10 dark:bg-[rgb(--var(--color-card))] dark:hover:bg-gray-400 dark:hover:cursor-pointer"
+              role="menuitem"
+            >
+              Volver a proyectos
+            </Link>
+          )}
+
           <DarkModeToggle />
-          {/* En Project mostramos también el acceso rápido a proyectos en el menú */}
-          <ProfileMenu showGoProjects={showBack} />
+          <ProfileMenu />
         </div>
       </div>
     </header>

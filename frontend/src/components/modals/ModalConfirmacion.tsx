@@ -1,13 +1,23 @@
+// src/components/common/ModalConfirmacion.tsx
 import { useEffect, useRef } from "react";
 
 type Props = {
   onClose: () => void;
   onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmLabel?: string;
 };
 
-export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
+export default function ModalConfirmacion({
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmLabel = "Eliminar",
+}: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const titleId = "eliminar-proyecto-title";
+  const titleId = "confirm-dialog-title";
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -30,7 +40,7 @@ export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+      className="bg-black/60 backdrop-blur-sm fixed inset-0 z-50 flex items-center justify-center px-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -45,11 +55,11 @@ export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
           id={titleId}
           className="mb-3 text-xl font-bold text-red-600 dark:text-red-400"
         >
-          Eliminar proyecto
+          {title}
         </h2>
 
         <p className="mb-5 text-sm text-gray-700 dark:text-gray-300">
-          ¿Seguro que deseas eliminar este proyecto?{" "}
+          {description}{" "}
           <span className="font-medium text-red-600 dark:text-red-400">
             Esta acción no se puede deshacer.
           </span>
@@ -59,17 +69,17 @@ export default function ModalEliminarProyecto({ onClose, onConfirm }: Props) {
           <button
             onClick={onClose}
             className="rounded-lg border border-[rgb(var(--color-border))]
-                       bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-fg))]
-                       hover:bg-[rgb(var(--color-card))]/80 transition"
+                       bg-[rgb(var(--color-card))] px-4 py-2 text-[rgb(var(--color-fg))] transition
+                       hover:bg-[rgb(var(--color-card))]/80 hover:cursor-pointer"
           >
             Cancelar
           </button>
 
           <button
             onClick={onConfirm}
-            className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 transition"
+            className="rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700 hover:cursor-pointer"
           >
-            Eliminar
+            {confirmLabel}
           </button>
         </div>
       </div>

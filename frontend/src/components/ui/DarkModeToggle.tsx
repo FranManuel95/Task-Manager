@@ -28,7 +28,7 @@ export default function DarkModeToggle({ className = "" }: { className?: string 
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className={[
         "inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm transition",
-        "border-black/10 bg-white/80 hover:bg-white dark:border-white/10 dark:bg-gray-900/70 dark:hover:bg-gray-900",
+        "border-black/10 bg-white/80 dark:border-white/10 hover:cursor-pointer dark:bg-[rgb(--var(--color-card))] dark:hover:bg-gray-400 hover:border-gray-500",
         className,
       ].join(" ")}
       title={theme === "dark" ? "Cambiar a claro" : "Cambiar a oscuro"}

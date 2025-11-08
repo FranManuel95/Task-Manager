@@ -149,7 +149,7 @@ export default function Register() {
               className="w-full rounded-lg border border-[rgb(var(--color-border))]
                          bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
                          px-3 py-2 outline-none transition
-                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600"
+                         focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-600 dark:[color-scheme:dark] date-icon-pointer"
             />
           </label>
 
@@ -191,7 +191,7 @@ export default function Register() {
           className="w-full rounded-lg px-4 py-2 font-medium text-white transition
                      bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-indigo-400
                      disabled:opacity-60 disabled:cursor-not-allowed
-                     dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                     dark:bg-emerald-600 dark:hover:bg-emerald-500 hover:cursor-pointer"
         >
           {loading ? "Registrando..." : "Registrarse"}
         </button>

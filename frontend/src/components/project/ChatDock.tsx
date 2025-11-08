@@ -90,7 +90,7 @@ export default function ChatDock({ proyectoId }: Props) {
                     className={`rounded-lg px-2 py-1 text-sm ${
                       activeTab === "general"
                         ? "bg-indigo-600 text-white"
-                        : "hover:bg-[rgb(var(--color-card))]/70"
+                        : "hover:bg-[rgb(var(--color-card))]/70 hover:cursor-pointer"
                     }`}
                   >
                     General
@@ -100,7 +100,7 @@ export default function ChatDock({ proyectoId }: Props) {
                     className={`rounded-lg px-2 py-1 text-sm ${
                       activeTab === "dm"
                         ? "bg-indigo-600 text-white"
-                        : "hover:bg-[rgb(var(--color-card))]/70"
+                        : "hover:bg-[rgb(var(--color-card))]/70 hover:cursor-pointer"
                     }`}
                   >
                     Mensajes
@@ -109,7 +109,7 @@ export default function ChatDock({ proyectoId }: Props) {
 
                 <button
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-2 py-1 text-sm hover:bg-[rgb(var(--color-card))]/70"
+                  className="rounded-lg px-2 py-1 text-sm hover:bg-[rgb(var(--color-card))]/70 hover:cursor-pointer"
                   title="Cerrar"
                 >
                   ×
@@ -139,7 +139,7 @@ export default function ChatDock({ proyectoId }: Props) {
                             setActiveDm(m);
                             setActiveTab("dm");
                           }}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs transition ${
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 hover:cursor-pointer text-xs transition ${
                             selected
                               ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300"
                               : "border-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-card))]/70"
@@ -170,7 +170,7 @@ export default function ChatDock({ proyectoId }: Props) {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700"
+          className="relative flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition hover:bg-indigo-700 hover:cursor-pointer"
           title="Abrir chat"
         >
           💬

@@ -176,7 +176,7 @@ export default function Testimonials({
               type="button"
               onClick={next}
               aria-label="Siguiente"
-              className="rounded-full p-2 bg-white/80 dark:bg-gray-800/80 border border-black/10 dark:border-white/10 shadow hover:bg-white dark:hover:bg-gray-800"
+              className="rounded-full p-2 bg-white/80 dark:bg-gray-800/80 border border-black/10 dark:border-white/10 shadow hover:bg-white dark:hover:bg-gray-800 "
             >
               <ChevronRight />
             </button>
@@ -211,7 +211,7 @@ export default function Testimonials({
 /* --- Iconos simples (SVG inline) --- */
 function ChevronLeft() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="w-5 h-5 hover:cursor-pointer" aria-hidden="true">
       <path
         d="M15 6l-6 6 6 6"
         stroke="currentColor"
@@ -224,7 +224,7 @@ function ChevronLeft() {
 }
 function ChevronRight() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="w-5 h-5 hover:cursor-pointer" aria-hidden="true">
       <path
         d="M9 6l6 6-6 6"
         stroke="currentColor"
