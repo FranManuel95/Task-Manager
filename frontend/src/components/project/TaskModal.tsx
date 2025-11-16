@@ -66,42 +66,46 @@ export default function TaskModal(props: Props) {
     onClose,
     proyectoDeadline,
     initialValues,
-    readOnly = false,         // 🔹 NUEVO
-    onEditClick,              // 🔹 NUEVO
+    readOnly = false, // 🔹 NUEVO
+    onEditClick, // 🔹 NUEVO
   } = props as any;
 
   const variant: "task" | "project" = (props as any).variant ?? "task";
 
   // --- Estado (según variante) ---
   const [estado, setEstado] = useState<Estado>(
-    variant === "task" ? (initialValues?.estado ?? "por-hacer") : "por-hacer"
+    variant === "task" ? (initialValues?.estado ?? "por-hacer") : "por-hacer",
   );
   const [titulo, setTitulo] = useState(
-    variant === "task" ? (initialValues?.titulo ?? "") : ""
+    variant === "task" ? (initialValues?.titulo ?? "") : "",
   );
   const [prioridad, setPrioridad] = useState<Prioridad>(
-    variant === "task" ? (initialValues?.prioridad ?? "media") : "media"
+    variant === "task" ? (initialValues?.prioridad ?? "media") : "media",
   );
   const [etiquetaInput, setEtiquetaInput] = useState("");
   const [etiquetas, setEtiquetas] = useState<string[]>(
-    variant === "task" ? (initialValues?.etiquetas ?? []) : []
+    variant === "task" ? (initialValues?.etiquetas ?? []) : [],
   );
 
   const [nombre, setNombre] = useState(
-    variant === "project" ? (initialValues?.nombre ?? "") : ""
+    variant === "project" ? (initialValues?.nombre ?? "") : "",
   );
   const [color, setColor] = useState(
-    variant === "project" ? (initialValues?.color ?? "#3B82F6") : "#3B82F6"
+    variant === "project" ? (initialValues?.color ?? "#3B82F6") : "#3B82F6",
   );
 
   // 🔹 NUEVO: color temporal para el picker (solo project)
   const [tempColor, setTempColor] = useState(
-    variant === "project" ? (initialValues?.color ?? "#3B82F6") : "#3B82F6"
+    variant === "project" ? (initialValues?.color ?? "#3B82F6") : "#3B82F6",
   );
 
-  const [descripcion, setDescripcion] = useState(initialValues?.descripcion ?? "");
+  const [descripcion, setDescripcion] = useState(
+    initialValues?.descripcion ?? "",
+  );
   const [deadline, setDeadline] = useState<string>(
-    initialValues?.deadline ? toDateInputValue(initialValues.deadline as string) : ""
+    initialValues?.deadline
+      ? toDateInputValue(initialValues.deadline as string)
+      : "",
   );
   const [deadlineError, setDeadlineError] = useState("");
 
@@ -122,7 +126,11 @@ export default function TaskModal(props: Props) {
       setTempColor(initColor); // 🔹 sincroniza vista previa con el aplicado
     }
     setDescripcion(initialValues?.descripcion ?? "");
-    setDeadline(initialValues?.deadline ? toDateInputValue(initialValues.deadline as string) : "");
+    setDeadline(
+      initialValues?.deadline
+        ? toDateInputValue(initialValues.deadline as string)
+        : "",
+    );
     setDeadlineError("");
 
     const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -176,18 +184,27 @@ export default function TaskModal(props: Props) {
 
   const titleText =
     variant === "task"
-      ? mode === "create" ? "Nueva tarea" : "Editar tarea"
-      : mode === "create" ? "Nuevo proyecto" : "Editar proyecto";
+      ? mode === "create"
+        ? "Nueva tarea"
+        : "Editar tarea"
+      : mode === "create"
+        ? "Nuevo proyecto"
+        : "Editar proyecto";
 
-  const submitText =
-    readOnly
-      ? "Editar" // 🔹 en solo lectura mostramos "Editar"
-      : variant === "task"
-        ? mode === "create" ? "Crear tarea" : "Guardar cambios"
-        : mode === "create" ? "Crear proyecto" : "Guardar cambios";
+  const submitText = readOnly
+    ? "Editar" // 🔹 en solo lectura mostramos "Editar"
+    : variant === "task"
+      ? mode === "create"
+        ? "Crear tarea"
+        : "Guardar cambios"
+      : mode === "create"
+        ? "Crear proyecto"
+        : "Guardar cambios";
 
   // 🔹 clases comunes para disabled
-  const disabledCls = readOnly ? "opacity-60 pointer-events-none select-none" : "";
+  const disabledCls = readOnly
+    ? "opacity-60 pointer-events-none select-none"
+    : "";
 
   const applyTempColor = () => {
     if (readOnly) return;
@@ -225,10 +242,14 @@ export default function TaskModal(props: Props) {
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-sm">
-                  <span className="mb-1 block text-xs opacity-70 ">Columna</span>
+                  <span className="mb-1 block text-xs opacity-70 ">
+                    Columna
+                  </span>
                   <select
                     value={estado}
-                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setEstado(e.target.value as Estado)}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                      setEstado(e.target.value as Estado)
+                    }
                     disabled={readOnly}
                     className={`hover:cursor-pointer w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 ${disabledCls}`}
                   >
@@ -241,7 +262,9 @@ export default function TaskModal(props: Props) {
                 </label>
 
                 <label className="text-sm">
-                  <span className="mb-1 block text-xs opacity-70">Prioridad</span>
+                  <span className="mb-1 block text-xs opacity-70">
+                    Prioridad
+                  </span>
                   <select
                     value={prioridad}
                     onChange={(e) => setPrioridad(e.target.value as Prioridad)}
@@ -318,7 +341,9 @@ export default function TaskModal(props: Props) {
                         ? "cursor-not-allowed border border-[rgb(var(--color-border))] text-gray-400"
                         : "bg-indigo-600 text-white hover:bg-indigo-700"
                     }`}
-                    title={isTempEqual ? "Ya está aplicado" : "Aplicar este color"}
+                    title={
+                      isTempEqual ? "Ya está aplicado" : "Aplicar este color"
+                    }
                   >
                     Aceptar
                   </button>
@@ -337,7 +362,8 @@ export default function TaskModal(props: Props) {
                 {/* Mensaje de ayuda si hay diferencia */}
                 {!readOnly && tempColor !== color && (
                   <p className="mt-1 text-[11px] text-gray-500 dark:text-neutral-400">
-                    Previsualizando <code>{tempColor}</code>. Pulsa <strong>Aceptar</strong> para aplicarlo.
+                    Previsualizando <code>{tempColor}</code>. Pulsa{" "}
+                    <strong>Aceptar</strong> para aplicarlo.
                   </p>
                 )}
               </div>
@@ -359,11 +385,13 @@ export default function TaskModal(props: Props) {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="text-sm">
-              <span className="mb-1 block text-xs opacity-70">Fecha límite</span>
+              <span className="mb-1 block text-xs opacity-70">
+                Fecha límite
+              </span>
               <input
                 type="date"
                 value={deadline}
-                max={variant === "task" ? (maxDate || "") : undefined}
+                max={variant === "task" ? maxDate || "" : undefined}
                 onChange={(e) => {
                   if (readOnly) return;
                   setDeadline(e.target.value);
@@ -372,7 +400,8 @@ export default function TaskModal(props: Props) {
                 disabled={readOnly}
                 aria-invalid={!!deadlineError}
                 className={[
-                  "w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ","date-icon-pointer",
+                  "w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 ",
+                  "date-icon-pointer",
                   deadlineError
                     ? "border-rose-400 focus:ring-rose-300/50"
                     : "border-[rgb(var(--color-border))] focus:ring-indigo-400",
@@ -381,7 +410,9 @@ export default function TaskModal(props: Props) {
                 ].join(" ")}
               />
               {deadlineError && !readOnly && (
-                <p className="mt-1 text-[11px] text-rose-500">{deadlineError}</p>
+                <p className="mt-1 text-[11px] text-rose-500">
+                  {deadlineError}
+                </p>
               )}
             </label>
 
@@ -445,7 +476,13 @@ export default function TaskModal(props: Props) {
                   handleSubmit();
                 }
               }}
-              disabled={readOnly ? false : (variant === "task" ? !titulo.trim() : !nombre.trim())}
+              disabled={
+                readOnly
+                  ? false
+                  : variant === "task"
+                    ? !titulo.trim()
+                    : !nombre.trim()
+              }
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:cursor-pointer hover:bg-indigo-700 disabled:opacity-50"
             >
               {submitText}

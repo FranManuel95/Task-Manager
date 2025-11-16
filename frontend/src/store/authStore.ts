@@ -39,11 +39,21 @@ export const useAuthStore = create<AuthState>()(
             name: res.name ?? null,
             avatarUrl: res.avatarUrl ?? null,
           };
-          set({ usuario, loading: false, error: null, hasCheckedSession: true });
-          try { useTareasStore.getState().setUsuarioActual(usuario.email); } catch {}
+          set({
+            usuario,
+            loading: false,
+            error: null,
+            hasCheckedSession: true,
+          });
+          try {
+            useTareasStore.getState().setUsuarioActual(usuario.email);
+          } catch {}
           return true;
         } catch (e: any) {
-          const msg = e?.status === 401 ? "Credenciales inválidas" : "No se pudo iniciar sesión";
+          const msg =
+            e?.status === 401
+              ? "Credenciales inválidas"
+              : "No se pudo iniciar sesión";
           set({ error: msg, loading: false, hasCheckedSession: true });
           return false;
         }
@@ -56,7 +66,8 @@ export const useAuthStore = create<AuthState>()(
           set({ loading: false, error: null });
           return true;
         } catch (e: any) {
-          const msg = e?.status === 409 ? "Ese email ya existe" : "No se pudo registrar";
+          const msg =
+            e?.status === 409 ? "Ese email ya existe" : "No se pudo registrar";
           set({ error: msg, loading: false });
           return false;
         }
@@ -75,22 +86,28 @@ export const useAuthStore = create<AuthState>()(
             avatarUrl: u.avatarUrl ?? null,
           };
           set({ usuario, hasCheckedSession: true });
-          try { useTareasStore.getState().setUsuarioActual(usuario.email); } catch {}
+          try {
+            useTareasStore.getState().setUsuarioActual(usuario.email);
+          } catch {}
         } catch {
           set({ usuario: null, hasCheckedSession: true });
         }
       },
 
       async logout() {
-        try { await authApi.logout(); } catch {}
+        try {
+          await authApi.logout();
+        } catch {}
         set({ usuario: null, hasCheckedSession: true });
-        try { useTareasStore.getState().setUsuarioActual(""); } catch {}
+        try {
+          useTareasStore.getState().setUsuarioActual("");
+        } catch {}
       },
 
       clearError() {
         set({ error: null });
       },
     }),
-    { name: "auth-storage" }
-  )
+    { name: "auth-storage" },
+  ),
 );

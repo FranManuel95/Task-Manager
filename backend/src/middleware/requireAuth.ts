@@ -10,7 +10,11 @@ declare global {
   }
 }
 
-export function requireAuthUser(req: Request, res: Response, next: NextFunction) {
+export function requireAuthUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const s: any = req.session;
 
   // Acepta AMBOS formatos: { user: { id, email } } o bien userId/email sueltos

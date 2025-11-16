@@ -5,8 +5,7 @@ import type { ChatMessage } from "../types/chats";
 
 /** Helpers de IDs */
 const isDm = (id: string) => typeof id === "string" && id.includes("::dm::");
-const projectFromId = (id: string) =>
-  isDm(id) ? id.split("::dm::")[0] : id;
+const projectFromId = (id: string) => (isDm(id) ? id.split("::dm::")[0] : id);
 const bcName = (id: string) => `chat-${id}`; // id = proyectoId o threadId
 
 type ChatState = {
@@ -33,7 +32,9 @@ export const useChatStore = create<ChatState>()(
 
         // Proyectos temporales => solo local
         if (id.startsWith("temp-")) {
-          set((s) => ({ threads: { ...s.threads, [id]: s.threads[id] ?? [] } }));
+          set((s) => ({
+            threads: { ...s.threads, [id]: s.threads[id] ?? [] },
+          }));
           return;
         }
 
@@ -45,13 +46,16 @@ export const useChatStore = create<ChatState>()(
           set((s) => ({ threads: { ...s.threads, [id]: items } }));
         } catch (e) {
           console.warn("getChatHistory falló, se mantiene estado local:", e);
-          set((s) => ({ threads: { ...s.threads, [id]: s.threads[id] ?? [] } }));
+          set((s) => ({
+            threads: { ...s.threads, [id]: s.threads[id] ?? [] },
+          }));
         }
       },
 
       subscribeThread: (id: string) => {
         if (!id) return () => {};
-        if (typeof window === "undefined" || !("BroadcastChannel" in window)) return () => {};
+        if (typeof window === "undefined" || !("BroadcastChannel" in window))
+          return () => {};
 
         const channel = new BroadcastChannel(bcName(id));
         const onMsg = (ev: MessageEvent) => {
@@ -122,6 +126,6 @@ export const useChatStore = create<ChatState>()(
         }
       },
     }),
-    { name: "chat-storage-v2" }
-  )
+    { name: "chat-storage-v2" },
+  ),
 );

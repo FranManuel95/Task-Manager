@@ -21,9 +21,7 @@ function normDeadline(d: unknown): string | null {
 }
 function normEtiquetas(arr: unknown): string[] {
   if (!Array.isArray(arr)) return [];
-  return arr
-    .map((x) => String(x ?? "").trim())
-    .filter(Boolean);
+  return arr.map((x) => String(x ?? "").trim()).filter(Boolean);
 }
 
 export const createTareaActions = (set: any, get: () => TareasStore) => ({
@@ -31,7 +29,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     proyectoId: string,
     estado: Estado,
     tituloInput: unknown,
-    deadlineInput: unknown = null
+    deadlineInput: unknown = null,
   ): void => {
     const email = get().usuarioActual;
     if (!email) return;
@@ -109,7 +107,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
                     ...p2.tareas,
                     "por-hacer": replaceIn(p2.tareas["por-hacer"]),
                     "en-progreso": replaceIn(p2.tareas["en-progreso"]),
-                    "completado": replaceIn(p2.tareas["completado"]),
+                    completado: replaceIn(p2.tareas["completado"]),
                   },
                 },
               },
@@ -130,7 +128,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     nuevaDescripcionInput: unknown,
     prioridadInput: unknown,
     deadlineInput: unknown,
-    etiquetasInput: unknown
+    etiquetasInput: unknown,
   ): void => {
     const email = get().usuarioActual;
     if (!email) return;
@@ -160,7 +158,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
             deadline,
             etiquetas,
           }
-        : t
+        : t,
     );
 
     // Optimista
@@ -206,7 +204,9 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     const { ownerEmail, proyecto } = loc;
     if (!canEditProyecto(email, proyecto)) return;
 
-    const nuevasTareasColumna = proyecto.tareas[estado].filter((t) => t.id !== id);
+    const nuevasTareasColumna = proyecto.tareas[estado].filter(
+      (t) => t.id !== id,
+    );
 
     // Optimista
     set((state: TareasStore) => ({
@@ -249,7 +249,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
     const nuevasTareas: Record<Estado, Tarea[]> = {
       "por-hacer": [...proyecto.tareas["por-hacer"]],
       "en-progreso": [...proyecto.tareas["en-progreso"]],
-      "completado": [...proyecto.tareas["completado"]],
+      completado: [...proyecto.tareas["completado"]],
     };
 
     let tareaMovida: Tarea | null = null;
@@ -290,7 +290,7 @@ export const createTareaActions = (set: any, get: () => TareasStore) => ({
           tareaId,
           from:
             (["por-hacer", "en-progreso", "completado"] as Estado[]).find((k) =>
-              proyecto.tareas[k].some((t) => t.id === tareaId)
+              proyecto.tareas[k].some((t) => t.id === tareaId),
             ) ?? "por-hacer",
           to: destino,
         });

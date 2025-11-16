@@ -1,16 +1,96 @@
-// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+/// *
+///  * ======= MODELOS =======
+model Proyecto {
+  id          String        @id @default(uuid())
+  nombre      String
+  descripcion String?
+  color       String
+  deadline    DateTime?
+  creadoPor   String
+  usuarios    String[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  auditLogs   AuditLog[]
+  messages    ChatMessage[]
+  threads     ChatThread[]
+  tareas      Tarea[]
 }
 
-/**
- * ======= ENUMS =======
- */
+model Tarea {
+  id          String    @id @default(uuid())
+  proyectoId  String
+  titulo      String
+  descripcion String?
+  prioridad   Prioridad @default(media)
+  deadline    DateTime?
+  etiquetas   String[]
+  estado      Estado    @default(por_hacer)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+}
+
+model ChatThread {
+  id           String        @id @default(uuid())
+  proyectoId   String
+  isPrivate    Boolean       @default(false)
+  participants String[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     ChatMessage[]
+  proyecto     Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+}
+
+model ChatMessage {
+  id         String      @id @default(uuid())
+  proyectoId String
+  sender     String
+  text       String
+  createdAt  DateTime    @default(now())
+  threadId   String?
+  updatedAt  DateTime    @updatedAt
+  proyecto   Proyecto    @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  thread     ChatThread? @relation(fields: [threadId], references: [id])
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  birthdate    DateTime?
+  jobTitle     String?
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  proyectoId String
+  entity     String
+  entityId   String?
+  action     String
+  actorEmail String
+  payload    Json?
+  createdAt  DateTime @default(now())
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+}
+
+/// *
+///  * ======= ENUMS =======
 enum Estado {
   por_hacer   @map("por-hacer")
   en_progreso @map("en-progreso")
@@ -21,102 +101,4 @@ enum Prioridad {
   alta
   media
   baja
-}
-
-/**
- * ======= MODELOS =======
- */
-model Proyecto {
-  id          String        @id @default(uuid())
-  nombre      String
-  descripcion String?
-  color       String
-  deadline    DateTime?
-  creadoPor   String
-  usuarios    String[]
-
-  // Relaciones
-  tareas     Tarea[]
-  messages   ChatMessage[]
-  threads    ChatThread[]
-  auditLogs  AuditLog[]
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-}
-
-model Tarea {
-  id          String    @id @default(uuid())
-  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  proyectoId  String
-
-  titulo      String
-  descripcion String?
-  prioridad   Prioridad @default(media)
-  deadline    DateTime?
-  etiquetas   String[]  // Postgres -> text[]
-  estado      Estado    @default(por_hacer)
-
-  // Metadatos
-  createdBy   String?
-  updatedBy   String?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model ChatThread {
-  id          String    @id @default(uuid())
-  proyecto    Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  proyectoId  String
-
-  isPrivate   Boolean   @default(false)
-  participants String[] // emails de participantes
-
-  messages    ChatMessage[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model ChatMessage {
-  id          String      @id @default(uuid())
-  proyecto    Proyecto    @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  proyectoId  String
-
-  thread      ChatThread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
-  threadId    String?
-
-  sender      String
-  text        String
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-
-  name      String?
-  avatarUrl String?
-  birthdate DateTime?
-  jobTitle  String?
-  phone     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  createdAt  DateTime @default(now())
-  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  proyectoId String
-  entity     String
-  entityId   String?
-  action     String
-  actorEmail String
-  payload    Json?
 }

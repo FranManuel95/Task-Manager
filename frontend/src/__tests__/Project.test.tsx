@@ -19,15 +19,15 @@ function renderProject() {
       <Routes>
         <Route path="/proyecto/:id" element={<Project />} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
 describe("Project component", () => {
   beforeEach(() => {
-  resetTareasStore();
-  setupStoreForTests();
-});
+    resetTareasStore();
+    setupStoreForTests();
+  });
 
   test("debería renderizar la tarea inicial", () => {
     renderProject();
@@ -67,7 +67,7 @@ describe("Project component", () => {
     fireEvent.click(eliminarBtn);
 
     await waitFor(() =>
-      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument()
+      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument(),
     );
   });
 
@@ -79,7 +79,9 @@ describe("Project component", () => {
     fireEvent.click(editBtn);
 
     // Selecciona el combobox de prioridad que muestra "media"
-    const selectPrioridad = screen.getByLabelText("Prioridad") as HTMLSelectElement;
+    const selectPrioridad = screen.getByLabelText(
+      "Prioridad",
+    ) as HTMLSelectElement;
     expect(selectPrioridad).toBeInTheDocument();
 
     fireEvent.change(selectPrioridad, { target: { value: "alta" } });
@@ -94,7 +96,7 @@ describe("Project component", () => {
     });
 
     await waitFor(() =>
-      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument()
+      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument(),
     );
   });
 
@@ -106,7 +108,7 @@ describe("Project component", () => {
     fireEvent.change(filtroPrioridad, { target: { value: "alta" } });
 
     await waitFor(() =>
-      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument()
+      expect(screen.queryByText("Tarea Test")).not.toBeInTheDocument(),
     );
   });
 
@@ -118,7 +120,9 @@ describe("Project component", () => {
 
     const email = useTareasStore.getState().usuarioActual!;
     const tareasEnProgreso =
-      useTareasStore.getState().proyectos[email][TEST_PROYECTO_ID].tareas["en-progreso"];
+      useTareasStore.getState().proyectos[email][TEST_PROYECTO_ID].tareas[
+        "en-progreso"
+      ];
 
     expect(tareasEnProgreso.some((t) => t.id === "1")).toBe(true);
   });

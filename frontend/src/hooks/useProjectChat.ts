@@ -2,7 +2,9 @@ import { useEffect, useMemo } from "react";
 import type { ChatMessage } from "../types";
 import { useChatStore } from "../store/chatStore";
 
-const EMPTY: ReadonlyArray<ChatMessage> = Object.freeze([]) as ReadonlyArray<ChatMessage>;
+const EMPTY: ReadonlyArray<ChatMessage> = Object.freeze(
+  [],
+) as ReadonlyArray<ChatMessage>;
 
 type UseProjectChatReturn = {
   messages: ReadonlyArray<ChatMessage>;
@@ -12,7 +14,9 @@ type UseProjectChatReturn = {
 export function useProjectChat(proyectoId?: string): UseProjectChatReturn {
   const pid = proyectoId ?? "__none__";
 
-  const messages = useChatStore((s) => (s.threads[pid] ?? EMPTY) as ReadonlyArray<ChatMessage>);
+  const messages = useChatStore(
+    (s) => (s.threads[pid] ?? EMPTY) as ReadonlyArray<ChatMessage>,
+  );
   const loadHistory = useChatStore((s) => s.loadHistory);
   const subscribeThread = useChatStore((s) => s.subscribeThread);
   const sendMessage = useChatStore((s) => s.sendMessage);
@@ -38,7 +42,7 @@ export function useProjectChat(proyectoId?: string): UseProjectChatReturn {
       if (!proyectoId) return;
       await sendMessage?.(proyectoId, msg.sender, msg.text);
     },
-    [proyectoId, sendMessage]
+    [proyectoId, sendMessage],
   );
 
   return { messages, send };

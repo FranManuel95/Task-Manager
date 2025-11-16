@@ -17,7 +17,8 @@ function deriveEntityName(it: AuditItem): string {
   const nameBefore = before?.nombre || before?.titulo || before?.entityName;
   if (nameBefore) return String(nameBefore);
 
-  const nameDiff = diff?.nombre?.after || diff?.titulo?.after || diff?.entityName?.after;
+  const nameDiff =
+    diff?.nombre?.after || diff?.titulo?.after || diff?.entityName?.after;
   if (nameDiff) return String(nameDiff);
 
   return (
@@ -60,11 +61,17 @@ export default function ActivityLog({ proyectoId }: Props) {
 
   return (
     <div className="bg-white dark:bg-neutral-800 rounded-lg border border-[rgb(var(--color-border))] p-4">
-      <h3 className="font-semibold mb-3 dark:text-neutral-100">Actividad reciente</h3>
+      <h3 className="font-semibold mb-3 dark:text-neutral-100">
+        Actividad reciente
+      </h3>
 
-      {loading && <p className="text-sm text-gray-500 dark:text-neutral-400">Cargando…</p>}
+      {loading && (
+        <p className="text-sm text-gray-500 dark:text-neutral-400">Cargando…</p>
+      )}
       {!loading && items.length === 0 && (
-        <p className="text-sm text-gray-500 dark:text-neutral-400">Sin actividad.</p>
+        <p className="text-sm text-gray-500 dark:text-neutral-400">
+          Sin actividad.
+        </p>
       )}
 
       <ul className="space-y-2">
@@ -73,10 +80,14 @@ export default function ActivityLog({ proyectoId }: Props) {
           const when = ts ? fromNow(ts) : "";
           const actor = it.actorName || it.actorEmail || "—";
           return (
-            <li key={it.id} className="text-sm text-gray-800 dark:text-neutral-200">
-              <span className="font-medium">{actor}</span>{" "}
-              {renderAction(it)}{" "}
-              <span className="text-xs text-gray-500 dark:text-neutral-400">• {when}</span>
+            <li
+              key={it.id}
+              className="text-sm text-gray-800 dark:text-neutral-200"
+            >
+              <span className="font-medium">{actor}</span> {renderAction(it)}{" "}
+              <span className="text-xs text-gray-500 dark:text-neutral-400">
+                • {when}
+              </span>
             </li>
           );
         })}
@@ -114,28 +125,66 @@ function renderAction(it: AuditItem) {
 
   // Mensajes legibles y consistentes
   if (entity === "tarea") {
-    if (act === "create") return <>creó la tarea <span className="font-medium">“{name}”</span> <span className="opacity-70">{idShort}</span></>;
-    if (act === "update") return <>editó la tarea <span className="font-medium">“{name}”</span> <span className="opacity-70">{idShort}</span></>;
-    if (act === "delete") return <>eliminó la tarea <span className="font-medium">“{name}”</span> <span className="opacity-70">{idShort}</span></>;
+    if (act === "create")
+      return (
+        <>
+          creó la tarea <span className="font-medium">“{name}”</span>{" "}
+          <span className="opacity-70">{idShort}</span>
+        </>
+      );
+    if (act === "update")
+      return (
+        <>
+          editó la tarea <span className="font-medium">“{name}”</span>{" "}
+          <span className="opacity-70">{idShort}</span>
+        </>
+      );
+    if (act === "delete")
+      return (
+        <>
+          eliminó la tarea <span className="font-medium">“{name}”</span>{" "}
+          <span className="opacity-70">{idShort}</span>
+        </>
+      );
     if (act === "move") {
       if (movedFrom && movedTo && movedFrom !== movedTo) {
         return (
           <>
-            movió la tarea <span className="font-medium">“{name}”</span>{" "}
-            de <span className="italic">{prettyEstado(movedFrom)}</span> a{" "}
+            movió la tarea <span className="font-medium">“{name}”</span> de{" "}
+            <span className="italic">{prettyEstado(movedFrom)}</span> a{" "}
             <span className="italic">{prettyEstado(movedTo)}</span>{" "}
             <span className="opacity-70">{idShort}</span>
           </>
         );
       }
-      return <>movió la tarea <span className="font-medium">“{name}”</span> <span className="opacity-70">{idShort}</span></>;
+      return (
+        <>
+          movió la tarea <span className="font-medium">“{name}”</span>{" "}
+          <span className="opacity-70">{idShort}</span>
+        </>
+      );
     }
   }
 
   if (entity === "proyecto") {
-    if (act === "create") return <>creó el proyecto <span className="font-medium">“{name}”</span></>;
-    if (act === "update") return <>editó el proyecto <span className="font-medium">“{name}”</span></>;
-    if (act === "delete") return <>eliminó el proyecto <span className="font-medium">“{name}”</span></>;
+    if (act === "create")
+      return (
+        <>
+          creó el proyecto <span className="font-medium">“{name}”</span>
+        </>
+      );
+    if (act === "update")
+      return (
+        <>
+          editó el proyecto <span className="font-medium">“{name}”</span>
+        </>
+      );
+    if (act === "delete")
+      return (
+        <>
+          eliminó el proyecto <span className="font-medium">“{name}”</span>
+        </>
+      );
   }
 
   if (entity === "chat") {
@@ -145,8 +194,7 @@ function renderAction(it: AuditItem) {
   // genérico (fallback)
   return (
     <>
-      realizó {act} en {entity}{" "}
-      <span className="font-medium">“{name}”</span>{" "}
+      realizó {act} en {entity} <span className="font-medium">“{name}”</span>{" "}
       <span className="opacity-70">{idShort}</span>
     </>
   );
@@ -157,8 +205,8 @@ function prettyEstado(val: string) {
   const map: Record<string, string> = {
     "por-hacer": "Por hacer",
     "en-progreso": "En progreso",
-    "bloqueado": "Bloqueado",
-    "completado": "Completado",
+    bloqueado: "Bloqueado",
+    completado: "Completado",
   };
   return map[val] ?? val;
 }

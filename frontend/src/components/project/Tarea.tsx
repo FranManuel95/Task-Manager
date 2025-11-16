@@ -32,14 +32,15 @@ export default function Tarea({
   onEditRequest,
   proyectoDeadline,
 }: Props) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: tarea.id,
-    data: { parent, tarea },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: tarea.id,
+      data: { parent, tarea },
+    });
 
   const [showDelete, setShowDelete] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
- 
+
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 }
     : undefined;
@@ -67,7 +68,9 @@ export default function Tarea({
 
   const creatorLabel = tarea.createdByName || tarea.createdBy || "—";
   const updaterLabel = tarea.updatedByName || tarea.updatedBy || "—";
-  const updatedAtLabel = tarea.updatedAt ? new Date(tarea.updatedAt).toLocaleString() : null;
+  const updatedAtLabel = tarea.updatedAt
+    ? new Date(tarea.updatedAt).toLocaleString()
+    : null;
 
   return (
     <>
@@ -98,16 +101,15 @@ export default function Tarea({
             <div className="mb-1 flex items-center justify-between gap-2">
               {/* Título -> abre visor de solo lectura */}
               <h4
-  className="truncate text-sm font-medium leading-5 dark:text-neutral-50 cursor-pointer hover:underline decoration-dotted"
-  title="Ver detalles"
-  onClick={(e) => {
-    e.stopPropagation();
-    setShowViewer(true);
-  }}
->
-  {tarea.titulo}
-</h4>
-
+                className="truncate text-sm font-medium leading-5 dark:text-neutral-50 cursor-pointer hover:underline decoration-dotted"
+                title="Ver detalles"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowViewer(true);
+                }}
+              >
+                {tarea.titulo}
+              </h4>
 
               <div className="flex items-center gap-2">
                 <span
@@ -115,8 +117,8 @@ export default function Tarea({
                     tarea.prioridad === "alta"
                       ? "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900"
                       : tarea.prioridad === "media"
-                      ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
-                      : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
+                        ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
+                        : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
                   }`}
                 >
                   {tarea.prioridad}
@@ -148,11 +150,15 @@ export default function Tarea({
             {/* Meta */}
             <div className="mt-2 grid gap-1 text-[11px] text-gray-500 dark:text-neutral-400">
               <div>
-                <span className="text-gray-600 dark:text-neutral-300">Creada por:</span>{" "}
+                <span className="text-gray-600 dark:text-neutral-300">
+                  Creada por:
+                </span>{" "}
                 {creatorLabel}
               </div>
               <div>
-                <span className="text-gray-600 dark:text-neutral-300">Última modificación:</span>{" "}
+                <span className="text-gray-600 dark:text-neutral-300">
+                  Última modificación:
+                </span>{" "}
                 {updaterLabel}
                 {updatedAtLabel ? ` — ${updatedAtLabel}` : ""}
               </div>
@@ -204,7 +210,9 @@ export default function Tarea({
           className="fixed inset-0 z-50 flex items-center justify-center"
           role="dialog"
           aria-modal="true"
-          onMouseDown={(e) => e.target === e.currentTarget && setShowViewer(false)}
+          onMouseDown={(e) =>
+            e.target === e.currentTarget && setShowViewer(false)
+          }
         >
           <div className="absolute inset-0  backdrop-blur-sm" />
           <div className="relative w-[min(560px,94vw)] rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-4 shadow-2xl">
@@ -236,8 +244,8 @@ export default function Tarea({
                     tarea.prioridad === "alta"
                       ? "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900"
                       : tarea.prioridad === "media"
-                      ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
-                      : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
+                        ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900"
+                        : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900"
                   }`}
                 >
                   {tarea.prioridad}
@@ -252,8 +260,8 @@ export default function Tarea({
                     {parent === "por-hacer"
                       ? "Por hacer"
                       : parent === "en-progreso"
-                      ? "En progreso"
-                      : "Completado"}
+                        ? "En progreso"
+                        : "Completado"}
                   </span>
                 </div>
                 <div className="text-gray-700 dark:text-neutral-300">
@@ -287,7 +295,8 @@ export default function Tarea({
                   <span className="opacity-70">Creada por:</span> {creatorLabel}
                 </div>
                 <div>
-                  <span className="opacity-70">Última modificación:</span> {updaterLabel}
+                  <span className="opacity-70">Última modificación:</span>{" "}
+                  {updaterLabel}
                   {updatedAtLabel ? ` — ${updatedAtLabel}` : ""}
                 </div>
               </div>
@@ -316,30 +325,29 @@ export default function Tarea({
       )}
 
       {showViewer && (
-  <TaskModal
-    variant="task"
-    open={showViewer}
-    mode="edit"
-    readOnly
-    onClose={() => setShowViewer(false)}
-    proyectoDeadline={proyectoDeadline ?? null}
-    initialValues={{
-      estado: parent,
-      titulo: tarea.titulo,
-      descripcion: tarea.descripcion ?? "",
-      prioridad: tarea.prioridad ?? "media",
-      deadline: tarea.deadline ?? null,
-      etiquetas: tarea.etiquetas ?? [],
-    }}
-    // en solo lectura no confirmamos nada
-    onConfirm={() => {}}
-    onEditClick={() => {
-      setShowViewer(false);
-      onEditRequest(tarea, parent); // reutilizas tu flujo de edición existente
-    }}
-  />
-)}
+        <TaskModal
+          variant="task"
+          open={showViewer}
+          mode="edit"
+          readOnly
+          onClose={() => setShowViewer(false)}
+          proyectoDeadline={proyectoDeadline ?? null}
+          initialValues={{
+            estado: parent,
+            titulo: tarea.titulo,
+            descripcion: tarea.descripcion ?? "",
+            prioridad: tarea.prioridad ?? "media",
+            deadline: tarea.deadline ?? null,
+            etiquetas: tarea.etiquetas ?? [],
+          }}
+          // en solo lectura no confirmamos nada
+          onConfirm={() => {}}
+          onEditClick={() => {
+            setShowViewer(false);
+            onEditRequest(tarea, parent); // reutilizas tu flujo de edición existente
+          }}
+        />
+      )}
     </>
-    
   );
 }

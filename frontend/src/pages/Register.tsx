@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 type Extras = {
   name?: string;
-  avatarUrl?: string;   // el backend espera 'avatarUrl'
-  birthdate?: string;   // yyyy-mm-dd
+  avatarUrl?: string; // el backend espera 'avatarUrl'
+  birthdate?: string; // yyyy-mm-dd
   jobTitle?: string;
   phone?: string;
 };
@@ -17,7 +17,7 @@ export default function Register() {
 
   // nuevos campos (UI)
   const [name, setName] = useState<string>("");
-  const [photoUrl, setPhotoUrl] = useState<string>("");   // input -> luego mapeamos a avatarUrl
+  const [photoUrl, setPhotoUrl] = useState<string>(""); // input -> luego mapeamos a avatarUrl
   const [birthdate, setBirthdate] = useState<string>("");
   const [jobTitle, setJobTitle] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
@@ -77,12 +77,16 @@ export default function Register() {
 
         <div className="grid grid-cols-1 gap-3">
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Correo electrónico</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Correo electrónico
+            </span>
             <input
               type="email"
               placeholder="correo@ejemplo.com"
               value={email}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setEmail(e.target.value)
+              }
               autoComplete="email"
               className="w-full rounded-lg border border-[rgb(var(--color-border))]
                          bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
@@ -93,12 +97,16 @@ export default function Register() {
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Contraseña</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Contraseña
+            </span>
             <input
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setPassword(e.target.value)
+              }
               autoComplete="new-password"
               className="w-full rounded-lg border border-[rgb(var(--color-border))]
                          bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
@@ -110,7 +118,9 @@ export default function Register() {
 
           {/* Campos nuevos */}
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Nombre y apellidos</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Nombre y apellidos
+            </span>
             <input
               type="text"
               placeholder="Tu nombre"
@@ -126,7 +136,9 @@ export default function Register() {
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Foto (URL)</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Foto (URL)
+            </span>
             <input
               type="url"
               placeholder="https://…"
@@ -141,7 +153,9 @@ export default function Register() {
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Fecha de nacimiento</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Fecha de nacimiento
+            </span>
             <input
               type="date"
               value={birthdate}
@@ -154,7 +168,9 @@ export default function Register() {
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Puesto de trabajo</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Puesto de trabajo
+            </span>
             <input
               type="text"
               placeholder="Ej. Desarrollador"
@@ -169,7 +185,9 @@ export default function Register() {
           </label>
 
           <label className="block space-y-1">
-            <span className="text-sm text-[rgb(var(--color-fg-muted))]">Teléfono de contacto</span>
+            <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+              Teléfono de contacto
+            </span>
             <input
               type="tel"
               placeholder="+34 600 000 000"

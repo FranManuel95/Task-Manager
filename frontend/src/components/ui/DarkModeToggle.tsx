@@ -2,18 +2,23 @@
 import { useEffect, useState } from "react";
 
 function getInitialTheme(): "light" | "dark" {
-  const stored = (typeof window !== "undefined" && localStorage.getItem("theme")) as
-    | "light"
-    | "dark"
-    | null;
+  const stored = (typeof window !== "undefined" &&
+    localStorage.getItem("theme")) as "light" | "dark" | null;
   if (stored) return stored;
-  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+  if (
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  ) {
     return "dark";
   }
   return "light";
 }
 
-export default function DarkModeToggle({ className = "" }: { className?: string }) {
+export default function DarkModeToggle({
+  className = "",
+}: {
+  className?: string;
+}) {
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
 
   useEffect(() => {

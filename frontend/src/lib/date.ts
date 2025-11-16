@@ -19,7 +19,8 @@ export function fromNow(iso?: string | Date | null) {
 /** Parse seguro para ISO u objeto Date. Devuelve null si no es válido. */
 export function safeParseDate(input?: string | Date | null): Date | null {
   if (!input) return null;
-  if (input instanceof Date) return Number.isNaN(input.getTime()) ? null : input;
+  if (input instanceof Date)
+    return Number.isNaN(input.getTime()) ? null : input;
   const d = new Date(input);
   return Number.isNaN(d.getTime()) ? null : d;
 }

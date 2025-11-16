@@ -23,7 +23,10 @@ const features: Feature[] = [
     desc: "Invita a tu equipo y editen juntos proyectos y tareas. Chat interno incluido.",
     icon: (
       <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
-        <path d="M7 10a4 4 0 118 0 4 4 0 01-8 0zm-4 9a7 7 0 0116 0v1H3v-1z" fill="currentColor" />
+        <path
+          d="M7 10a4 4 0 118 0 4 4 0 01-8 0zm-4 9a7 7 0 0116 0v1H3v-1z"
+          fill="currentColor"
+        />
       </svg>
     ),
   },
@@ -32,16 +35,28 @@ const features: Feature[] = [
     desc: "Búsqueda, filtros por prioridad y avisos de deadline para que nada se te pase.",
     icon: (
       <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
-        <path d="M12 22a10 10 0 100-20 10 10 0 000 20zm1-11h5v2h-7V6h2v5z" fill="currentColor" />
+        <path
+          d="M12 22a10 10 0 100-20 10 10 0 000 20zm1-11h5v2h-7V6h2v5z"
+          fill="currentColor"
+        />
       </svg>
     ),
   },
 ];
 
 const faqs: FAQ[] = [
-  { q: "¿Puedo invitar a colaboradores?", a: "Sí. Cualquier colaborador puede crear, editar, mover y eliminar tareas del proyecto." },
-  { q: "¿Tiene chat integrado?", a: "Si. Tiene un chat general, además de poder hablar individualmente con cada colaborador. Cada chat es totalmente dependiente de cada proyecto" },
-  { q: "¿Como funciona el deadline?", a: "Cada proyecto tiene un deadline. A su vez cada tarea tendrá un deadline que no podrá superar el deadline del proyecto." },
+  {
+    q: "¿Puedo invitar a colaboradores?",
+    a: "Sí. Cualquier colaborador puede crear, editar, mover y eliminar tareas del proyecto.",
+  },
+  {
+    q: "¿Tiene chat integrado?",
+    a: "Si. Tiene un chat general, además de poder hablar individualmente con cada colaborador. Cada chat es totalmente dependiente de cada proyecto",
+  },
+  {
+    q: "¿Como funciona el deadline?",
+    a: "Cada proyecto tiene un deadline. A su vez cada tarea tendrá un deadline que no podrá superar el deadline del proyecto.",
+  },
 ];
 
 // --- añade este pequeño componente (por ejemplo, encima de export default function Home) ---
@@ -75,31 +90,40 @@ export default function Home() {
   return (
     <div className="relative min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       {/* Fondo */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
         <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full blur-3xl opacity-25 bg-gradient-to-tr from-blue-500 to-cyan-400" />
         <div className="absolute -bottom-24 -right-24 h-[28rem] w-[28rem] rounded-full blur-3xl opacity-20 bg-gradient-to-tr from-fuchsia-500 to-purple-400" />
       </div>
 
       {/* Navbar */}
       <header className="sticky top-0 z-20 backdrop-blur bg-white/70 dark:bg-gray-950/60 border-b border-black/5 dark:border-white/10">
-  <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 mt-2 mb-2">
-    <div className="flex items-center gap-3">
-      <ThemeLogo />
-    </div>
+        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 mt-2 mb-2">
+          <div className="flex items-center gap-3">
+            <ThemeLogo />
+          </div>
 
-    <div className="hidden items-center gap-6 text-sm md:flex">
-      <a href="#features" className="hover:opacity-80">Características</a>
-      <a href="#how" className="hover:opacity-80">Cómo funciona</a>
-      <a href="#faq" className="hover:opacity-80">FAQ</a>
-      <ThemeToggleButton /> {/* <- aquí */}
-      <Link
-        to="/dashboard"
-        className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-300"
-      >
-        Ir a la app
-        <span aria-hidden>↗</span>
-      </Link>
-    </div>
+          <div className="hidden items-center gap-6 text-sm md:flex">
+            <a href="#features" className="hover:opacity-80">
+              Características
+            </a>
+            <a href="#how" className="hover:opacity-80">
+              Cómo funciona
+            </a>
+            <a href="#faq" className="hover:opacity-80">
+              FAQ
+            </a>
+            <ThemeToggleButton /> {/* <- aquí */}
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              Ir a la app
+              <span aria-hidden>↗</span>
+            </Link>
+          </div>
           <div className="md:hidden">
             <a
               href="#features"
@@ -130,7 +154,9 @@ export default function Home() {
                 .
               </h1>
               <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
-                Un tablero Kanban rápido, colaborativo y sin fricciones. Crea tareas, colabora con tu equipo y mantén los deadlines bajo control.
+                Un tablero Kanban rápido, colaborativo y sin fricciones. Crea
+                tareas, colabora con tu equipo y mantén los deadlines bajo
+                control.
               </p>
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 {/* Botones primario/secundario consistentes */}
@@ -178,47 +204,76 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section id="features" className="border-t border-black/5 dark:border-white/10">
+        <section
+          id="features"
+          className="border-t border-black/5 dark:border-white/10"
+        >
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <SectionHeading kicker="Características" title="Todo lo que necesitas para ejecutar" subtitle="Sin configuraciones complejas ni distracciones." />
-           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-  {features.map((f, i) => (
-    <motion.div
-      key={f.title}
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.45, delay: i * 0.06 }}
-      className="rounded-xl border border-black/10 bg-white/60 p-5 backdrop-blur hover:shadow-lg transition dark:border-white/10 dark:bg-gray-900/60 flex flex-col items-center text-center"
-    >
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/10 text-blue-700 dark:text-blue-300">
-        {f.icon}
-      </div>
-      <h3 className="mt-4 font-semibold">{f.title}</h3>
-      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{f.desc}</p>
-    </motion.div>
-  ))}
-</div>
-
+            <SectionHeading
+              kicker="Características"
+              title="Todo lo que necesitas para ejecutar"
+              subtitle="Sin configuraciones complejas ni distracciones."
+            />
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((f, i) => (
+                <motion.div
+                  key={f.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: i * 0.06 }}
+                  className="rounded-xl border border-black/10 bg-white/60 p-5 backdrop-blur hover:shadow-lg transition dark:border-white/10 dark:bg-gray-900/60 flex flex-col items-center text-center"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/10 text-blue-700 dark:text-blue-300">
+                    {f.icon}
+                  </div>
+                  <h3 className="mt-4 font-semibold">{f.title}</h3>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    {f.desc}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* How it works */}
-        <section id="how" className="border-t border-black/5 dark:border-white/10">
+        <section
+          id="how"
+          className="border-t border-black/5 dark:border-white/10"
+        >
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-            <SectionHeading kicker="Cómo funciona" title="De cero a flujo en minutos" subtitle="Crea un proyecto, invita a tu equipo y empieza a mover tareas." />
+            <SectionHeading
+              kicker="Cómo funciona"
+              title="De cero a flujo en minutos"
+              subtitle="Crea un proyecto, invita a tu equipo y empieza a mover tareas."
+            />
             <ol className="counter-steps mt-10 grid gap-6 md:grid-cols-3">
               {[
-                { t: "Crea tu proyecto", d: "Define nombre, color y deadline opcional." },
-                { t: "Invita a tu equipo", d: "Comparte el proyecto y chatead dentro." },
-                { t: "Planifica y ejecuta", d: "Agrega tareas, define prioridades y cumple fechas." },
+                {
+                  t: "Crea tu proyecto",
+                  d: "Define nombre, color y deadline opcional.",
+                },
+                {
+                  t: "Invita a tu equipo",
+                  d: "Comparte el proyecto y chatead dentro.",
+                },
+                {
+                  t: "Planifica y ejecuta",
+                  d: "Agrega tareas, define prioridades y cumple fechas.",
+                },
               ].map((s, i) => (
-                <li key={s.t} className="relative rounded-xl border border-black/10 bg-white/60 p-6 dark:border-white/10 dark:bg-gray-900/60">
+                <li
+                  key={s.t}
+                  className="relative rounded-xl border border-black/10 bg-white/60 p-6 dark:border-white/10 dark:bg-gray-900/60"
+                >
                   <span className="step-index absolute -top-3 -left-3 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                     {i + 1}
                   </span>
                   <h4 className="font-semibold">{s.t}</h4>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{s.d}</p>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    {s.d}
+                  </p>
                 </li>
               ))}
             </ol>
@@ -228,19 +283,34 @@ export default function Home() {
         <Testimonials className="border-t border-black/5 dark:border-white/10" />
 
         {/* FAQ */}
-        <section id="faq" className="border-t border-black/5 dark:border-white/10">
+        <section
+          id="faq"
+          className="border-t border-black/5 dark:border-white/10"
+        >
           <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-            <SectionHeading kicker="FAQ" title="Preguntas frecuentes" subtitle="Las dudas típicas, resueltas." />
+            <SectionHeading
+              kicker="FAQ"
+              title="Preguntas frecuentes"
+              subtitle="Las dudas típicas, resueltas."
+            />
             <div className="mt-10 overflow-hidden rounded-xl border border-black/10 dark:border-white/10">
               {faqs.map((f) => (
-                <details key={f.q} className="group open:bg-black/[0.02] dark:open:bg-white/[0.03]">
+                <details
+                  key={f.q}
+                  className="group open:bg-black/[0.02] dark:open:bg-white/[0.03]"
+                >
                   <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4">
                     <span className="font-medium">{f.q}</span>
-                    <span className="transition group-open:rotate-180" aria-hidden>
+                    <span
+                      className="transition group-open:rotate-180"
+                      aria-hidden
+                    >
                       ⌄
                     </span>
                   </summary>
-                  <div className="px-5 pb-5 pt-1 text-sm text-gray-600 dark:text-gray-300">{f.a}</div>
+                  <div className="px-5 pb-5 pt-1 text-sm text-gray-600 dark:text-gray-300">
+                    {f.a}
+                  </div>
                 </details>
               ))}
             </div>
@@ -250,7 +320,9 @@ export default function Home() {
         {/* Final CTA */}
         <section className="border-t border-black/5 dark:border-white/10">
           <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold sm:text-4xl">¿Listo para elevar tu ejecución?</h2>
+            <h2 className="text-3xl font-bold sm:text-4xl">
+              ¿Listo para elevar tu ejecución?
+            </h2>
             <p className="mt-3 text-lg text-gray-600 dark:text-gray-300">
               Crea un proyecto en segundos y empieza a entregar con foco.
             </p>
@@ -271,12 +343,19 @@ export default function Home() {
       <footer className="border-t border-black/5 dark:border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm sm:flex-row sm:px-6 lg:px-8">
           <p className="opacity-70">
-            © {new Date().getFullYear()} Task Manager. Todos los derechos reservados.
+            © {new Date().getFullYear()} Task Manager. Todos los derechos
+            reservados.
           </p>
           <nav className="flex gap-4 opacity-80">
-            <a href="#" className="hover:opacity-100">Privacidad</a>
-            <a href="#" className="hover:opacity-100">Términos</a>
-            <a href="#" className="hover:opacity-100">Contacto</a>
+            <a href="#" className="hover:opacity-100">
+              Privacidad
+            </a>
+            <a href="#" className="hover:opacity-100">
+              Términos
+            </a>
+            <a href="#" className="hover:opacity-100">
+              Contacto
+            </a>
           </nav>
         </div>
       </footer>
@@ -300,7 +379,9 @@ function SectionHeading({
         {kicker}
       </span>
       <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{title}</h2>
-      {subtitle && <p className="mt-3 text-gray-600 dark:text-gray-300">{subtitle}</p>}
+      {subtitle && (
+        <p className="mt-3 text-gray-600 dark:text-gray-300">{subtitle}</p>
+      )}
     </div>
   );
 }

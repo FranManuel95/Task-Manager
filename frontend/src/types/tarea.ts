@@ -9,9 +9,9 @@ export interface Tarea {
   prioridad: Prioridad;
   deadline?: string | null;
   etiquetas: string[];
-  createdBy?: string | null;       // email del autor
-  createdByName?: string | null;   // nombre resuelto (si el backend lo envía)
-  updatedBy?: string | null;       // email del último editor
-  updatedByName?: string | null;   // nombre resuelto
-  updatedAt?: string | null;  
+  createdBy?: string | null; // email del autor
+  createdByName?: string | null; // nombre resuelto (si el backend lo envía)
+  updatedBy?: string | null; // email del último editor
+  updatedByName?: string | null; // nombre resuelto
+  updatedAt?: string | null;
 }

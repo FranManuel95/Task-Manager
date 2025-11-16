@@ -11,5 +11,5 @@ createRoot(rootEl).render(
   <StrictMode>
     <App />
     <Toaster position="top-center" richColors />
-  </StrictMode>
+  </StrictMode>,
 );

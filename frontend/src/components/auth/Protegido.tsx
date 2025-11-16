@@ -11,8 +11,6 @@ export default function Protegido() {
 
   return (
     <div>
-      
-
       <main role="main">
         <Outlet />
       </main>

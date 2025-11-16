@@ -15,7 +15,9 @@ export default function MemberList({ usuarios }: Props) {
     <div className="card p-3">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold">Miembros</h4>
-        <span className="pill border-gray-200 bg-gray-50 text-gray-600">{usuarios.length}</span>
+        <span className="pill border-gray-200 bg-gray-50 text-gray-600">
+          {usuarios.length}
+        </span>
       </div>
       {usuarios.length === 0 ? (
         <p className="text-xs text-gray-500">Aún no hay colaboradores.</p>

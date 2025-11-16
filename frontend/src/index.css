@@ -40,8 +40,8 @@ body,
   }
   .dark .date-input::-webkit-calendar-picker-indicator {
     filter: invert(1) brightness(1.2);
-}
-/* Cursor mano sólo sobre el icono del date picker (Chrome/Edge/Safari) */
+  }
+  /* Cursor mano sólo sobre el icono del date picker (Chrome/Edge/Safari) */
   .date-icon-pointer::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
@@ -53,6 +53,4 @@ body,
   .date-icon-pointer::-webkit-inner-spin-button {
     display: none;
   }
-
 }
-

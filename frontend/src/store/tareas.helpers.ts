@@ -1,6 +1,6 @@
 export function validateTareaDeadline(
   deadline?: string | null,
-  proyectoDeadline?: string | null
+  proyectoDeadline?: string | null,
 ): boolean {
   if (
     deadline &&

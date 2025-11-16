@@ -50,12 +50,16 @@ export default function Login() {
         </h2>
 
         <label className="block space-y-1">
-          <span className="text-sm text-[rgb(var(--color-fg-muted))]">Correo electrónico</span>
+          <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+            Correo electrónico
+          </span>
           <input
             type="email"
             placeholder="correo@ejemplo.com"
             value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setEmail(e.target.value)
+            }
             autoComplete="email"
             className="w-full rounded-lg border border-[rgb(var(--color-border))]
                        bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
@@ -66,12 +70,16 @@ export default function Login() {
         </label>
 
         <label className="block space-y-1">
-          <span className="text-sm text-[rgb(var(--color-fg-muted))]">Contraseña</span>
+          <span className="text-sm text-[rgb(var(--color-fg-muted))]">
+            Contraseña
+          </span>
           <input
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setPassword(e.target.value)
+            }
             autoComplete="current-password"
             className="w-full rounded-lg border border-[rgb(var(--color-border))]
                        bg-[rgb(var(--color-card))] text-[rgb(var(--color-fg))]
@@ -86,9 +94,10 @@ export default function Login() {
           disabled={loading}
           className={`hover:cursor-pointer w-full rounded-lg px-4 py-2 font-medium text-white transition
                       focus:outline-none focus:ring-2 focus:ring-indigo-400
-                      ${loading
-                        ? "bg-neutral-400 cursor-not-allowed"
-                        : "bg-indigo-600 hover:bg-indigo-500"
+                      ${
+                        loading
+                          ? "bg-neutral-400 cursor-not-allowed"
+                          : "bg-indigo-600 hover:bg-indigo-500"
                       }`}
         >
           {loading ? "Entrando..." : "Entrar"}

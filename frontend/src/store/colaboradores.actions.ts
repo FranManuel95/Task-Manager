@@ -41,7 +41,10 @@ export const createColaboradorActions = (set: any, get: () => TareasStore) => ({
       try {
         await api.addUsuarioAProyecto(proyectoId, emailLimpio);
       } catch (err) {
-        console.warn("addUsuarioAProyecto falló, se mantiene estado local:", err);
+        console.warn(
+          "addUsuarioAProyecto falló, se mantiene estado local:",
+          err,
+        );
       }
     })();
   },

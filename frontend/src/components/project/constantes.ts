@@ -1,9 +1,9 @@
 import { Estado, Prioridad } from "../../types";
 
 export const estados: Array<{ id: Estado; titulo: string }> = [
-  { id: "por-hacer",   titulo: "Por hacer" },
+  { id: "por-hacer", titulo: "Por hacer" },
   { id: "en-progreso", titulo: "En progreso" },
-  { id: "completado",  titulo: "Completado" },
+  { id: "completado", titulo: "Completado" },
 ];
 
 /**
@@ -11,16 +11,16 @@ export const estados: Array<{ id: Estado; titulo: string }> = [
  * Nota: Solo aplicamos fondo del header para no “ensuciar” el body de la tarjeta.
  */
 export const columnaColors: Record<Estado, string> = {
-  "por-hacer":   "bg-amber-200/70",
+  "por-hacer": "bg-amber-200/70",
   "en-progreso": "bg-sky-200/70 ",
-  "completado":  "bg-emerald-200/70 ",
+  completado: "bg-emerald-200/70 ",
 };
 
 /** Iconos por estado (refuerzo visual además del color) */
 export const columnaIcons: Record<Estado, string> = {
-  "por-hacer":   "⏳",
+  "por-hacer": "⏳",
   "en-progreso": "🔄",
-  "completado":  "✅",
+  completado: "✅",
 };
 
 export const ordenPrioridad: Record<Prioridad, number> = {

@@ -12,8 +12,17 @@ export function useProyectoActual() {
   const emailLower = (email ?? "").trim().toLowerCase();
 
   const idRemap = useTareasStore((s) => s.idRemap);
-  const realId = useMemo(() => (paramId && idRemap[paramId]) || paramId || "", [paramId, idRemap]);
+  const realId = useMemo(
+    () => (paramId && idRemap[paramId]) || paramId || "",
+    [paramId, idRemap],
+  );
 
+  // 🔹 NUEVO: acción para traer el proyecto (con tareas) desde el backend
+  const fetchProyectoAndHydrate = useTareasStore(
+    (s) => (s as any).fetchProyectoAndHydrate,
+  );
+
+  // Si el id era temporal y ya tenemos el real, redirigimos
   useEffect(() => {
     if (!paramId) return;
     const mapped = idRemap[paramId];
@@ -22,8 +31,16 @@ export function useProyectoActual() {
     }
   }, [paramId, idRemap, navigate]);
 
+  // 🔹 NUEVO: al tener un id real, pedimos al backend y mezclamos en el store
+  useEffect(() => {
+    if (!realId) return;
+    fetchProyectoAndHydrate?.(realId);
+  }, [realId, fetchProyectoAndHydrate]);
+
   const proyecto = useTareasStore((state) =>
-    realId ? (state.getProyectoPorId(emailLower, realId) as Proyecto | null) : null
+    realId
+      ? (state.getProyectoPorId(emailLower, realId) as Proyecto | null)
+      : null,
   );
 
   const agregarTarea = useTareasStore((s) => s.agregarTarea);

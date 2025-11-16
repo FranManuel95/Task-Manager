@@ -26,7 +26,7 @@ function tareaFromApi(t: any): Tarea {
 function replaceTaskInColumn(
   list: Tarea[],
   tareaId: string,
-  replacer: (prev: Tarea) => Tarea
+  replacer: (prev: Tarea) => Tarea,
 ): Tarea[] {
   return list.map((t) => (t.id === tareaId ? replacer(t) : t));
 }
@@ -38,8 +38,8 @@ export const useTareasStore = create<TareasStore>()(
       setUsuarioActual: (email: string) =>
         set({ usuarioActual: (email ?? "").trim().toLowerCase() }),
 
-      proyectos: {},      // ownerLower -> id -> Proyecto
-      idRemap: {},        // tempId -> realId
+      proyectos: {}, // ownerLower -> id -> Proyecto
+      idRemap: {}, // tempId -> realId
 
       // filtros
       searchTerm: "",
@@ -63,7 +63,7 @@ export const useTareasStore = create<TareasStore>()(
         if (!canEditProyecto(current, proyecto)) return;
 
         const yaEsta = (proyecto.usuarios ?? []).some(
-          (u) => (u ?? "").trim().toLowerCase() === nuevoLower
+          (u) => (u ?? "").trim().toLowerCase() === nuevoLower,
         );
         if (yaEsta) return;
 
@@ -149,7 +149,7 @@ export const useTareasStore = create<TareasStore>()(
                 const p = state.proyectos[ownerEmail]?.[proyectoId];
                 if (!p) return state;
                 const col = p.tareas[estado].map((t) =>
-                  t.id === tempId ? createdMapped : t
+                  t.id === tempId ? createdMapped : t,
                 );
                 return {
                   proyectos: {
@@ -165,7 +165,10 @@ export const useTareasStore = create<TareasStore>()(
                 };
               });
             } catch (e) {
-              console.warn("createTarea falló; te quedas con la tarea local:", e);
+              console.warn(
+                "createTarea falló; te quedas con la tarea local:",
+                e,
+              );
             }
           })();
         }
@@ -188,7 +191,9 @@ export const useTareasStore = create<TareasStore>()(
                 ...proyecto,
                 tareas: {
                   ...proyecto.tareas,
-                  [estado]: proyecto.tareas[estado].filter((t) => t.id !== tareaId),
+                  [estado]: proyecto.tareas[estado].filter(
+                    (t) => t.id !== tareaId,
+                  ),
                 },
               },
             },
@@ -265,7 +270,10 @@ export const useTareasStore = create<TareasStore>()(
               // si tu endpoint devuelve la tarea, podrías re-sincronizarla aquí
               await api.moveTarea(proyectoId, { tareaId, from, to: destino });
             } catch (err) {
-              console.warn("moveTarea (backend) falló, se mantiene estado local:", err);
+              console.warn(
+                "moveTarea (backend) falló, se mantiene estado local:",
+                err,
+              );
               // opcional: revertir aquí si quisieras
             }
           })();
@@ -280,7 +288,7 @@ export const useTareasStore = create<TareasStore>()(
         descripcion,
         prioridad,
         deadline,
-        etiquetas
+        etiquetas,
       ) => {
         const email = (get().usuarioActual ?? "").trim().toLowerCase();
         const loc = locateProyecto(get(), proyectoId);
@@ -306,7 +314,7 @@ export const useTareasStore = create<TareasStore>()(
                   updatedBy: email || t.updatedBy || null,
                   updatedAt: now,
                 }
-              : t
+              : t,
           );
           return {
             proyectos: {
@@ -323,7 +331,8 @@ export const useTareasStore = create<TareasStore>()(
         });
 
         // Si la tarea aún es temporal, no pegues al backend
-        if (proyectoId.startsWith("temp-") || tareaId.startsWith("temp-")) return;
+        if (proyectoId.startsWith("temp-") || tareaId.startsWith("temp-"))
+          return;
 
         void api
           .updateTarea(proyectoId, tareaId, {
@@ -339,7 +348,11 @@ export const useTareasStore = create<TareasStore>()(
             set((state) => {
               const p = state.proyectos[ownerEmail]?.[proyectoId];
               if (!p) return state;
-              const col = replaceTaskInColumn(p.tareas[estado], tareaId, () => updated);
+              const col = replaceTaskInColumn(
+                p.tareas[estado],
+                tareaId,
+                () => updated,
+              );
               return {
                 proyectos: {
                   ...state.proyectos,
@@ -357,6 +370,6 @@ export const useTareasStore = create<TareasStore>()(
           .catch((e) => console.warn("updateTarea falló:", e));
       },
     }),
-    { name: "tareas-storage" }
-  )
+    { name: "tareas-storage" },
+  ),
 );

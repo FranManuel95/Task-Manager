@@ -108,7 +108,7 @@ function ActivityOverlay({
         </div>
       </motion.div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -171,14 +171,20 @@ export default function Project() {
 
   // Modal Editar Tarea
   const [editOpen, setEditOpen] = useState(false);
-  const [editCtx, setEditCtx] = useState<{ tarea: Tarea | null; parent: Estado | null }>({
+  const [editCtx, setEditCtx] = useState<{
+    tarea: Tarea | null;
+    parent: Estado | null;
+  }>({
     tarea: null,
     parent: null,
   });
 
-  const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
+  const agregarColaborador = useTareasStore(
+    (state) => state.agregarColaborador,
+  );
   const usuario = useAuthStore((s) => s.usuario);
-  const isAdmin = !!usuario?.email && !!proyecto && usuario.email === proyecto.creadoPor;
+  const isAdmin =
+    !!usuario?.email && !!proyecto && usuario.email === proyecto.creadoPor;
 
   const handleInvite = (email: string) => {
     if (!proyectoId || !isAdmin) return;
@@ -213,7 +219,10 @@ export default function Project() {
     moverTarea(proyectoId, tareaId, destino);
   };
 
-  const miembros = useMemo(() => (proyecto?.usuarios ?? []).filter(Boolean), [proyecto?.usuarios]);
+  const miembros = useMemo(
+    () => (proyecto?.usuarios ?? []).filter(Boolean),
+    [proyecto?.usuarios],
+  );
 
   // ⌘K / Ctrl+K enfoca buscador
   useEffect(() => {
@@ -319,7 +328,9 @@ export default function Project() {
                 aria-label="Buscar tareas"
                 placeholder="Buscar tareas por título…"
                 value={searchTerm}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
                 className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-indigo-400 focus:ring-2 hover:border-gray-500"
               />
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 focus:ring-indigo-400">
@@ -365,8 +376,11 @@ export default function Project() {
                   const tareasFiltradas = proyecto.tareas[estado.id]
                     .filter(
                       (t) =>
-                        t.titulo.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                        (filterPrioridad === "todas" || t.prioridad === filterPrioridad)
+                        t.titulo
+                          .toLowerCase()
+                          .includes(searchTerm.toLowerCase()) &&
+                        (filterPrioridad === "todas" ||
+                          t.prioridad === filterPrioridad),
                     )
                     .sort((a, b) => {
                       const aOrden = ordenPrioridad[a.prioridad];
@@ -374,7 +388,10 @@ export default function Project() {
                       if (aOrden !== bOrden) return aOrden - bOrden;
 
                       if (a.deadline && b.deadline) {
-                        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+                        return (
+                          new Date(a.deadline).getTime() -
+                          new Date(b.deadline).getTime()
+                        );
                       }
                       if (a.deadline) return -1;
                       if (b.deadline) return 1;
@@ -412,7 +429,7 @@ export default function Project() {
                   </motion.div>
                 )}
               </DragOverlay>,
-              document.body
+              document.body,
             )}
           </DndContext>
         </section>
@@ -468,7 +485,7 @@ export default function Project() {
             values.descripcion,
             values.prioridad,
             values.deadline,
-            values.etiquetas
+            values.etiquetas,
           );
 
           setEditOpen(false);
@@ -516,7 +533,7 @@ export default function Project() {
               />
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

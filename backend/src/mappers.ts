@@ -21,16 +21,24 @@ export type ProyectoOut = {
   descripcion: string;
   color: string;
   deadline: string | null; // ISO
-  creadoPor: string;       // email
-  usuarios: string[];      // emails (scalar array)
+  creadoPor: string; // email
+  usuarios: string[]; // emails (scalar array)
   tareas: Record<EstadoOut, TareaOut[]>;
 };
 
 export const fromDbEstado = (e: EstadoDB): EstadoOut =>
-  e === "por_hacer" ? "por-hacer" : e === "en_progreso" ? "en-progreso" : "completado";
+  e === "por_hacer"
+    ? "por-hacer"
+    : e === "en_progreso"
+      ? "en-progreso"
+      : "completado";
 
 export const toDbEstado = (e: EstadoOut): EstadoDB =>
-  e === "por-hacer" ? "por_hacer" : e === "en-progreso" ? "en_progreso" : "completado";
+  e === "por-hacer"
+    ? "por_hacer"
+    : e === "en-progreso"
+      ? "en_progreso"
+      : "completado";
 
 export const tareaFromDB = (t: TareaDB): TareaOut => ({
   id: t.id,
@@ -42,12 +50,12 @@ export const tareaFromDB = (t: TareaDB): TareaOut => ({
 });
 
 export function proyectoFromDB(
-  p: ProyectoDB & { tareas?: TareaDB[] }
+  p: ProyectoDB & { tareas?: TareaDB[] },
 ): ProyectoOut {
   const grouped: Record<EstadoOut, TareaOut[]> = {
     "por-hacer": [],
     "en-progreso": [],
-    "completado": [],
+    completado: [],
   };
 
   for (const t of p.tareas ?? []) {

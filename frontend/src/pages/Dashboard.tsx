@@ -35,7 +35,8 @@ function idToNum(id: string): number {
 
 function formatDateOnly(value: string): string {
   try {
-    const d = value.length > 10 ? new Date(value) : new Date(value + "T00:00:00");
+    const d =
+      value.length > 10 ? new Date(value) : new Date(value + "T00:00:00");
     if (Number.isNaN(d.getTime())) return value;
     return d.toLocaleDateString();
   } catch {
@@ -61,16 +62,27 @@ export default function Dashboard() {
   const usuario = useAuthStore((state) => state.usuario);
 
   const setUsuarioActual = useTareasStore((state) => state.setUsuarioActual);
-  const getProyectosPorUsuario = useTareasStore((state) => state.getProyectosPorUsuario);
+  const getProyectosPorUsuario = useTareasStore(
+    (state) => state.getProyectosPorUsuario,
+  );
   const agregarProyecto = useTareasStore((state) => state.agregarProyecto);
   const editarProyecto = useTareasStore((state) => state.editarProyecto);
   const eliminarProyecto = useTareasStore((state) => state.eliminarProyecto);
 
+  // 🔹 NUEVO: acción para pedir al backend e hidratar el store
+  const fetchProyectosAndHydrate = useTareasStore(
+    (s) => (s as any).fetchProyectosAndHydrate,
+  );
+
   const proyectosState = useTareasStore((s) => s.proyectos);
 
   useEffect(() => {
-    if (email) setUsuarioActual(email);
-  }, [email, setUsuarioActual]);
+    if (email) {
+      setUsuarioActual(email);
+      // 🔹 NUEVO: traer proyectos reales del backend y meterlos en el store
+      fetchProyectosAndHydrate?.();
+    }
+  }, [email, setUsuarioActual, fetchProyectosAndHydrate]);
 
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState("recientes");
@@ -83,12 +95,15 @@ export default function Dashboard() {
   const [nuevoColor, setNuevoColor] = useState("#3B82F6");
   const [nuevoDeadline, setNuevoDeadline] = useState("");
 
-  const [proyectoAEditar, setProyectoAEditar] = useState<ProyectoType | null>(null);
-  const [proyectoAEliminar, setProyectoAEliminar] = useState<ProyectoType | null>(null);
+  const [proyectoAEditar, setProyectoAEditar] = useState<ProyectoType | null>(
+    null,
+  );
+  const [proyectoAEliminar, setProyectoAEliminar] =
+    useState<ProyectoType | null>(null);
 
   const proyectos = useMemo(() => {
     return getProyectosPorUsuario(email) as Record<string, ProyectoType>;
-  }, [email, proyectosState]);
+  }, [email, proyectosState, getProyectosPorUsuario]);
 
   const proyectosFiltrados = useMemo(() => {
     return Object.values(proyectos)
@@ -121,7 +136,7 @@ export default function Dashboard() {
       nuevoNombre.trim(),
       nuevaDescripcion.trim(),
       nuevoColor,
-      nuevoDeadline || null
+      nuevoDeadline || null,
     );
     setNuevoNombre("");
     setNuevaDescripcion("");
@@ -138,7 +153,7 @@ export default function Dashboard() {
       nuevoNombre,
       nuevaDescripcion,
       nuevoColor,
-      nuevoDeadline || null
+      nuevoDeadline || null,
     );
     setProyectoAEditar(null);
     setMostrarEditar(false);
@@ -149,7 +164,7 @@ export default function Dashboard() {
     setProyectoAEliminar(null);
   };
 
-  // ⌘K / Ctrl+K enfoca buscador (igual que en Project.tsx)
+  // ⌘K / Ctrl+K enfoca buscador
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -177,11 +192,10 @@ export default function Dashboard() {
               <h1 className="text-xl font-semibold leading-tight md:text-2xl">
                 Tus Proyectos
               </h1>
-              {/* No añadimos descripción extra: el dashboard no la provee */}
             </div>
           </div>
 
-          {/* Acciones (sólo lo que ya existe en Dashboard) */}
+          {/* Acciones */}
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setMostrarCrear(true)}
@@ -202,7 +216,9 @@ export default function Dashboard() {
                 aria-label="Buscar proyectos"
                 placeholder="Buscar proyectos…"
                 value={busqueda}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setBusqueda(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setBusqueda(e.target.value)
+                }
                 className="w-full rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-400"
               />
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
@@ -214,8 +230,10 @@ export default function Dashboard() {
               <select
                 aria-label="Ordenar proyectos"
                 value={orden}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setOrden(e.target.value)}
-                className="w-full rounded-xl hover:cursor-pointer border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-400"
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  setOrden(e.target.value)
+                }
+                className="w-full rounded-xl hover:cursor-pointer hover:border-gray-500 border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] px-3.5 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-indigo-400"
               >
                 <option value="recientes">Más recientes</option>
                 <option value="antiguos">Más antiguos</option>
@@ -268,13 +286,19 @@ export default function Dashboard() {
                   const deadlineClass = proyecto.deadline
                     ? isBefore(parseISO(proyecto.deadline), new Date())
                       ? "text-red-600 dark:text-red-400"
-                      : differenceInDays(parseISO(proyecto.deadline), new Date()) <= 3
+                      : differenceInDays(
+                            parseISO(proyecto.deadline),
+                            new Date(),
+                          ) <= 3
                         ? "text-orange-500 dark:text-amber-400"
                         : "text-gray-700 dark:text-neutral-300"
                     : "text-gray-400 dark:text-neutral-500";
 
                   return (
-                    <tr key={proyecto.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800/60 ">
+                    <tr
+                      key={proyecto.id}
+                      className="hover:bg-gray-50 dark:hover:bg-neutral-800/60 "
+                    >
                       <td className="px-4 py-3 align-top whitespace-nowrap">
                         <Link
                           to={`/proyecto/${proyecto.id}`}
@@ -290,17 +314,26 @@ export default function Dashboard() {
 
                       <td className="px-4 py-3 align-top w-56">
                         <div className="w-full h-2 rounded bg-gray-200 dark:bg-neutral-800">
-                          <div className="h-2 rounded bg-green-500" style={{ width: `${progreso}%` }} />
+                          <div
+                            className="h-2 rounded bg-green-500"
+                            style={{ width: `${progreso}%` }}
+                          />
                         </div>
-                        <div className="mt-1 text-xs text-gray-600 dark:text-neutral-400">{progreso}%</div>
+                        <div className="mt-1 text-xs text-gray-600 dark:text-neutral-400">
+                          {progreso}%
+                        </div>
                       </td>
 
                       <td className="px-4 py-3 align-top text-sm text-gray-700 dark:text-neutral-200 whitespace-nowrap">
                         {done}/{total}
                       </td>
 
-                      <td className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}>
-                        {proyecto.deadline ? `📅 ${formatDateOnly(proyecto.deadline)}` : "—"}
+                      <td
+                        className={`px-4 py-3 align-top text-sm whitespace-nowrap ${deadlineClass}`}
+                      >
+                        {proyecto.deadline
+                          ? `📅 ${formatDateOnly(proyecto.deadline)}`
+                          : "—"}
                       </td>
 
                       <td className="px-4 py-3 align-top">
@@ -309,7 +342,9 @@ export default function Dashboard() {
                             className="inline-block w-5 h-5 rounded-full border border-gray-200 dark:border-neutral-700 shadow-sm"
                             style={{ backgroundColor: proyecto.color }}
                           />
-                          <code className="text-xs text-gray-700 dark:text-neutral-300">{proyecto.color}</code>
+                          <code className="text-xs text-gray-700 dark:text-neutral-300">
+                            {proyecto.color}
+                          </code>
                         </div>
                       </td>
 
@@ -322,7 +357,11 @@ export default function Dashboard() {
                               setNuevoNombre(proyecto.nombre);
                               setNuevaDescripcion(proyecto.descripcion);
                               setNuevoColor(proyecto.color);
-                              setNuevoDeadline(proyecto.deadline ? toDateInputValue(proyecto.deadline) : "");
+                              setNuevoDeadline(
+                                proyecto.deadline
+                                  ? toDateInputValue(proyecto.deadline)
+                                  : "",
+                              );
                               setMostrarEditar(true);
                             }}
                             className="text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 text-sm hover:cursor-pointer"
@@ -373,7 +412,7 @@ export default function Dashboard() {
                 payload.nombre.trim(),
                 payload.descripcion?.trim() ?? "",
                 payload.color,
-                payload.deadline || null
+                payload.deadline || null,
               );
               setNuevoNombre("");
               setNuevaDescripcion("");
@@ -406,7 +445,7 @@ export default function Dashboard() {
                 payload.nombre,
                 payload.descripcion,
                 payload.color,
-                payload.deadline || null
+                payload.deadline || null,
               );
               setMostrarEditar(false);
               setProyectoAEditar(null);

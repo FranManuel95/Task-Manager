@@ -60,7 +60,10 @@ export default function ModalEditarProyecto({
         className="theme-card w-full max-w-md rounded-2xl border border-[rgb(var(--color-border))] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="mb-4 text-xl font-bold text-[rgb(var(--color-fg))]">
+        <h2
+          id={titleId}
+          className="mb-4 text-xl font-bold text-[rgb(var(--color-fg))]"
+        >
           Editar proyecto
         </h2>
 

@@ -211,7 +211,11 @@ export default function Testimonials({
 /* --- Iconos simples (SVG inline) --- */
 function ChevronLeft() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5 hover:cursor-pointer" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="w-5 h-5 hover:cursor-pointer"
+      aria-hidden="true"
+    >
       <path
         d="M15 6l-6 6 6 6"
         stroke="currentColor"
@@ -224,7 +228,11 @@ function ChevronLeft() {
 }
 function ChevronRight() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5 hover:cursor-pointer" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="w-5 h-5 hover:cursor-pointer"
+      aria-hidden="true"
+    >
       <path
         d="M9 6l6 6-6 6"
         stroke="currentColor"

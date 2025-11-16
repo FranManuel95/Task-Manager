@@ -37,7 +37,7 @@ export function setupStoreForTests() {
 
   // 👇 Seed del auth store: ¡claves según tu authStore!
   useAuthStore.setState({
-    usuario: { email },      // si tu authStore guarda más campos, añádelos
+    usuario: { email }, // si tu authStore guarda más campos, añádelos
     // isAuth: true,          // si tienes un flag así, ponlo en true
   } as any);
 
@@ -61,7 +61,7 @@ export function setupStoreForTests() {
           tareas: {
             "por-hacer": [tareaEjemplo],
             "en-progreso": [],
-            "completado": [],
+            completado: [],
           } as Record<Estado, Tarea[]>,
         } as Proyecto,
       },

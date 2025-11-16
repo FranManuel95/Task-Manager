@@ -19,7 +19,7 @@ type Props = {
     descripcion: string,
     prioridad: Prioridad,
     deadline: string | null,
-    etiquetas: string[]
+    etiquetas: string[],
   ) => void;
   /** nuevo callback para abrir modal desde Project */
   onEditRequest: (tarea: TareaModel, parent: Estado) => void;

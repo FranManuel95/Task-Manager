@@ -5,13 +5,15 @@ const COOKIE_NAME = process.env.COOKIE_NAME || "access_token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 export type JwtPayload = {
-  sub: string;     // userId
-  email: string;   // user email
+  sub: string; // userId
+  email: string; // user email
   iat?: number;
   exp?: number;
 };
 
-export function signAuthToken(payload: Omit<JwtPayload, "iat" | "exp">): string {
+export function signAuthToken(
+  payload: Omit<JwtPayload, "iat" | "exp">,
+): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }
 

@@ -12,14 +12,23 @@ type Props = {
   className?: string;
 };
 
-const EMPTY: ReadonlyArray<ChatMessage> = Object.freeze([]) as ReadonlyArray<ChatMessage>;
+const EMPTY: ReadonlyArray<ChatMessage> = Object.freeze(
+  [],
+) as ReadonlyArray<ChatMessage>;
 
 const isDm = (id: string) => typeof id === "string" && id.includes("::dm::");
 const projectFromId = (id: string) => (isDm(id) ? id.split("::dm::")[0] : id);
 
-export default function ChatPanel({ chatId, proyectoId, className = "" }: Props) {
+export default function ChatPanel({
+  chatId,
+  proyectoId,
+  className = "",
+}: Props) {
   // id efectivo del hilo (preferimos chatId)
-  const id = useMemo(() => (chatId || proyectoId || "").trim(), [chatId, proyectoId]);
+  const id = useMemo(
+    () => (chatId || proyectoId || "").trim(),
+    [chatId, proyectoId],
+  );
 
   const usuario = useAuthStore((s) => s.usuario);
   const email = (usuario?.email ?? "").trim().toLowerCase();
@@ -39,7 +48,9 @@ export default function ChatPanel({ chatId, proyectoId, className = "" }: Props)
   const subscribeThread = useChatStore((s) => s.subscribeThread);
   const sendMessage = useChatStore((s) => s.sendMessage);
 
-  const messages: ReadonlyArray<ChatMessage> = id ? (threads[id] ?? EMPTY) : EMPTY;
+  const messages: ReadonlyArray<ChatMessage> = id
+    ? (threads[id] ?? EMPTY)
+    : EMPTY;
 
   const [text, setText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -63,7 +74,10 @@ export default function ChatPanel({ chatId, proyectoId, className = "" }: Props)
 
   // Auto-scroll al final cuando llegan mensajes
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    listRef.current?.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages.length]);
 
   if (!id) return null;
@@ -112,7 +126,10 @@ export default function ChatPanel({ chatId, proyectoId, className = "" }: Props)
         {messages.map((m) => {
           const mine = m.sender === email;
           return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+            <div
+              key={m.id}
+              className={`flex ${mine ? "justify-end" : "justify-start"}`}
+            >
               <div
                 className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm shadow ${
                   mine
@@ -121,7 +138,9 @@ export default function ChatPanel({ chatId, proyectoId, className = "" }: Props)
                 }`}
                 title={new Date(m.ts).toLocaleString()}
               >
-                {!mine && <div className="text-xs opacity-80 mb-1">{m.sender}</div>}
+                {!mine && (
+                  <div className="text-xs opacity-80 mb-1">{m.sender}</div>
+                )}
                 <div className="whitespace-pre-wrap break-words">{m.text}</div>
               </div>
             </div>

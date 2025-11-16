@@ -26,8 +26,8 @@ const FIELD_LABELS: Record<string, string> = {
 const ESTADO_LABEL: Record<string, string> = {
   "por-hacer": "Por hacer",
   "en-progreso": "En progreso",
-  "bloqueado": "Bloqueado",
-  "completado": "Completado",
+  bloqueado: "Bloqueado",
+  completado: "Completado",
 };
 
 // Prioridad legible
@@ -39,12 +39,18 @@ const PRIORIDAD_LABEL: Record<string, string> = {
 
 // --- helpers de formateo ---
 function isDateLikeString(s: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(s) || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)
+  );
 }
 
 /** Render genérico de valores (puede devolver nodos ricos) */
 function fmtValue(val: any, field?: string): ReactNode {
-  if (field === "deadline" && typeof val === "string" && isDateLikeString(val)) {
+  if (
+    field === "deadline" &&
+    typeof val === "string" &&
+    isDateLikeString(val)
+  ) {
     const d = safeParseDate(val);
     return d ? format(d, "dd MMM yyyy", { locale: es }) : val;
   }
@@ -57,7 +63,11 @@ function fmtValue(val: any, field?: string): ReactNode {
     return PRIORIDAD_LABEL[val] ?? val;
   }
 
-  if (field === "color" && typeof val === "string" && /^#?[0-9a-f]{6}$/i.test(val)) {
+  if (
+    field === "color" &&
+    typeof val === "string" &&
+    /^#?[0-9a-f]{6}$/i.test(val)
+  ) {
     const hex = val.startsWith("#") ? val : `#${val}`;
     return (
       <span className="inline-flex items-center gap-2">
@@ -161,14 +171,18 @@ const FIELD_ORDER = [
 
 function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
   const tsStr =
-    (item as any).ts ?? (item as any).createdAt ?? (item as any).created_at ?? null;
+    (item as any).ts ??
+    (item as any).createdAt ??
+    (item as any).created_at ??
+    null;
   const d = safeParseDate(tsStr);
   const when = d ? format(d, "dd MMM yyyy", { locale: es }) : "—";
 
   const actor = item.actorName || item.actorEmail || "—";
   const payload = ((item as any).payload ?? {}) as any;
 
-  const isPlainObject = (o: any) => o && typeof o === "object" && !Array.isArray(o);
+  const isPlainObject = (o: any) =>
+    o && typeof o === "object" && !Array.isArray(o);
 
   const diff: Record<string, { before: any; after: any }> | undefined =
     isPlainObject(payload.diff) ? (payload.diff as any) : undefined;
@@ -184,7 +198,11 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
     type: "update" | "create" | "delete";
   }> = [];
 
-  if ((item.action === "update" || item.action === "move") && diff && Object.keys(diff).length > 0) {
+  if (
+    (item.action === "update" || item.action === "move") &&
+    diff &&
+    Object.keys(diff).length > 0
+  ) {
     rows = Object.entries(diff).map(([k, v]) => ({
       fieldKey: k,
       label: FIELD_LABELS[k] || k,
@@ -221,8 +239,12 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
     <div className="p-3 flex items-start gap-3 hover:bg-[rgb(var(--color-card))]/60 transition-colors duration-300">
       <div className="text-gray-400 dark:text-gray-500">📝</div>
       <div className="flex-1">
-        <div className="text-sm font-medium dark:text-white">{makeTitle(item)}</div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">por {actor}</div>
+        <div className="text-sm font-medium dark:text-white">
+          {makeTitle(item)}
+        </div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+          por {actor}
+        </div>
 
         {!compact && rows.length > 0 && (
           <div className="dark:text-gray-400 mt-1 text-xs space-y-0.5">
@@ -230,7 +252,9 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
               if (r.type === "update") {
                 return (
                   <div className="dark:text-gray-400" key={idx}>
-                    <span className="font-medium">Modificación de {r.label}:</span>{" "}
+                    <span className="font-medium">
+                      Modificación de {r.label}:
+                    </span>{" "}
                     <span className="line-through opacity-60 break-all">
                       {fmtDiffBefore(r.before, r.fieldKey)}
                     </span>{" "}
@@ -243,7 +267,9 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
               } else if (r.type === "create") {
                 return (
                   <div key={idx}>
-                    <span className="font-medium">Valor inicial de {r.label}:</span>{" "}
+                    <span className="font-medium">
+                      Valor inicial de {r.label}:
+                    </span>{" "}
                     <span className="break-all">
                       {fmtDiffAfter(r.after, r.fieldKey)}
                     </span>
@@ -252,7 +278,9 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
               } else {
                 return (
                   <div key={idx}>
-                    <span className="font-medium">Último valor de {r.label}:</span>{" "}
+                    <span className="font-medium">
+                      Último valor de {r.label}:
+                    </span>{" "}
                     <span className="break-all">
                       {fmtDiffBefore(r.before, r.fieldKey)}
                     </span>
@@ -271,9 +299,9 @@ function DiffView({ item, compact }: { item: AuditItem; compact: boolean }) {
 
 type Props = {
   proyectoId: string;
-  initialLimit?: number;   // default 5
-  enableFilter?: boolean;  // default true
-  compact?: boolean;       // muestra sin diffs detallados
+  initialLimit?: number; // default 5
+  enableFilter?: boolean; // default true
+  compact?: boolean; // muestra sin diffs detallados
   className?: string;
 };
 
@@ -291,12 +319,17 @@ export default function ActivityPanel({
 
   // filtros
   const [q, setQ] = useState("");
-  const [action, setAction] = useState<"" | "create" | "update" | "move" | "delete">("");
+  const [action, setAction] = useState<
+    "" | "create" | "update" | "move" | "delete"
+  >("");
 
   const load = async (cur: string | null) => {
     setLoading(true);
     try {
-      const res = await audit.list(proyectoId, { cursor: cur ?? undefined, limit: 50 });
+      const res = await audit.list(proyectoId, {
+        cursor: cur ?? undefined,
+        limit: 50,
+      });
       const normalized = res.items.map((it: any) => ({
         ...it,
         ts: it.ts ?? it.createdAt ?? it.created_at ?? null,
@@ -337,8 +370,14 @@ export default function ActivityPanel({
         String(deriveEntityName(it)).toLowerCase();
 
       const nameHints = [
-        before?.nombre, after?.nombre, diff?.nombre?.before, diff?.nombre?.after,
-        before?.titulo, after?.titulo, diff?.titulo?.before, diff?.titulo?.after,
+        before?.nombre,
+        after?.nombre,
+        diff?.nombre?.before,
+        diff?.nombre?.after,
+        before?.titulo,
+        after?.titulo,
+        diff?.titulo?.before,
+        diff?.titulo?.after,
       ]
         .filter(Boolean)
         .map((x: string) => String(x).toLowerCase())
@@ -350,7 +389,10 @@ export default function ActivityPanel({
   }, [items, q, action]);
 
   const [visible, setVisible] = useState(initialLimit);
-  useEffect(() => setVisible(initialLimit), [initialLimit, proyectoId, q, action]);
+  useEffect(
+    () => setVisible(initialLimit),
+    [initialLimit, proyectoId, q, action],
+  );
 
   const shown = filtered.slice(0, visible);
 
@@ -396,7 +438,9 @@ export default function ActivityPanel({
 
       <div className="flex items-center justify-between gap-2 border-t border-[rgb(var(--color-border))] p-3">
         <button
-          onClick={() => setVisible((v) => Math.max(initialLimit, v - initialLimit))}
+          onClick={() =>
+            setVisible((v) => Math.max(initialLimit, v - initialLimit))
+          }
           className="hover:border-gray-500 dark:text-white rounded-lg border border-[rgb(var(--color-border))] px-3 py-1.5 text-sm hover:bg-[rgb(var(--color-card))]/70 transition disabled:opacity-50 hover:cursor-pointer"
           disabled={visible <= initialLimit}
         >

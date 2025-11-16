@@ -8,7 +8,9 @@ interface Props {
 
 export default function Colaboradores({ proyectoId, isAdmin = false }: Props) {
   const [emailNuevo, setEmailNuevo] = useState("");
-  const agregarColaborador = useTareasStore((state) => state.agregarColaborador);
+  const agregarColaborador = useTareasStore(
+    (state) => state.agregarColaborador,
+  );
 
   const handleAgregar = () => {
     const e = emailNuevo.trim().toLowerCase();

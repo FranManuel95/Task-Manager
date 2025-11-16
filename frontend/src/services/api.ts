@@ -23,7 +23,8 @@ export class ApiError extends Error {
 }
 
 const isProd = import.meta.env.MODE === "production";
-const base = isProd && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : "";
+const base =
+  isProd && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : "";
 
 function toQuery(params?: Record<string, unknown>): string {
   if (!params) return "";
@@ -55,7 +56,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const body = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    throw new ApiError(typeof body === "string" ? body : JSON.stringify(body), res.status);
+    throw new ApiError(
+      typeof body === "string" ? body : JSON.stringify(body),
+      res.status,
+    );
   }
   return body as T;
 }
@@ -64,9 +68,15 @@ const http = {
   get: <T>(path: string, params?: Record<string, unknown>) =>
     request<T>(`${path}${toQuery(params)}`),
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body: body == null ? undefined : JSON.stringify(body) }),
+    request<T>(path, {
+      method: "POST",
+      body: body == null ? undefined : JSON.stringify(body),
+    }),
   patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body: body == null ? undefined : JSON.stringify(body) }),
+    request<T>(path, {
+      method: "PATCH",
+      body: body == null ? undefined : JSON.stringify(body),
+    }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
@@ -97,34 +107,43 @@ export const api = {
   listProyectos: (params?: { q?: string; page?: number; pageSize?: number }) =>
     http.get<Paginated<Proyecto>>("/api/proyectos", params),
 
-  getProyecto: (id: string) => http.get<Proyecto>(`/api/proyectos/${encodeURIComponent(id)}`),
+  getProyecto: (id: string) =>
+    http.get<Proyecto>(`/api/proyectos/${encodeURIComponent(id)}`),
 
-  createProyecto: (dto: CreateProyectoDTO) => http.post<Proyecto>("/api/proyectos", dto),
+  createProyecto: (dto: CreateProyectoDTO) =>
+    http.post<Proyecto>("/api/proyectos", dto),
 
   updateProyecto: (id: string, dto: UpdateProyectoDTO) =>
     http.patch<Proyecto>(`/api/proyectos/${encodeURIComponent(id)}`, dto),
 
-  deleteProyecto: (id: string) => http.delete<void>(`/api/proyectos/${encodeURIComponent(id)}`),
+  deleteProyecto: (id: string) =>
+    http.delete<void>(`/api/proyectos/${encodeURIComponent(id)}`),
 
   addUsuarioAProyecto: (proyectoId: string, usuario: string) =>
-    http.post<void>(`/api/proyectos/${encodeURIComponent(proyectoId)}/usuarios`, { usuario }),
+    http.post<void>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/usuarios`,
+      { usuario },
+    ),
 
   removeUsuarioDeProyecto: (proyectoId: string, usuario: string) =>
     http.delete<void>(
-      `/api/proyectos/${encodeURIComponent(proyectoId)}/usuarios/${encodeURIComponent(usuario)}`
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/usuarios/${encodeURIComponent(usuario)}`,
     ),
 
   /** Tareas */
   createTarea: (proyectoId: string, estado: Estado, dto: CreateTareaDTO) =>
-    http.post<Tarea>(`/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`, {
-      ...dto,
-      estado,
-    }),
+    http.post<Tarea>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas`,
+      {
+        ...dto,
+        estado,
+      },
+    ),
 
   updateTarea: (proyectoId: string, tareaId: string, dto: UpdateTareaDTO) =>
     http.patch<Tarea>(
       `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`,
-      dto
+      dto,
     ),
 
   moveTarea: (proyectoId: string, payload: MoveTareaDTO) => {
@@ -137,35 +156,41 @@ export const api = {
 
     return http.post<Proyecto>(
       `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/move`,
-      body
+      body,
     );
   },
 
   deleteTarea: (proyectoId: string, tareaId: string) =>
     http.delete<void>(
-      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/tareas/${encodeURIComponent(tareaId)}`,
     ),
 
   /** Chat (general por proyecto) */
-  getChatHistory: async (proyectoId: string, params?: { page?: number; pageSize?: number }) => {
+  getChatHistory: async (
+    proyectoId: string,
+    params?: { page?: number; pageSize?: number },
+  ) => {
     const res = await http.get<any>(
       `/api/proyectos/${encodeURIComponent(proyectoId)}/chat`,
-      params
+      params,
     );
     return normalizeMessages(res);
   },
 
   sendChatMessage: (proyectoId: string, sender: string, text: string) =>
-    http.post<ChatMessage>(`/api/proyectos/${encodeURIComponent(proyectoId)}/chat`, {
-      sender,
-      text,
-    }),
+    http.post<ChatMessage>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/chat`,
+      {
+        sender,
+        text,
+      },
+    ),
 
   /** Chat — Threads (DMs) */
   getThreadHistory: async (proyectoId: string, threadId: string) => {
     try {
       const path = `/api/proyectos/${encodeURIComponent(
-        proyectoId
+        proyectoId,
       )}/chat/threads/${encodeURIComponent(threadId)}`;
       const res = await http.get<any>(path);
       return normalizeMessages(res);
@@ -175,9 +200,14 @@ export const api = {
     }
   },
 
-  sendThreadMessage: async (proyectoId: string, threadId: string, sender: string, text: string) => {
+  sendThreadMessage: async (
+    proyectoId: string,
+    threadId: string,
+    sender: string,
+    text: string,
+  ) => {
     const path = `/api/proyectos/${encodeURIComponent(
-      proyectoId
+      proyectoId,
     )}/chat/threads/${encodeURIComponent(threadId)}`;
     return http.post<ChatMessage>(path, { sender, text });
   },
@@ -198,7 +228,8 @@ export const api = {
     if (!id || !sender || !text) return;
     if (isThreadId(id)) {
       const projId = getProyectoIdFromThreadId(id);
-      if (!projId) throw new ApiError("threadId inválido (no contiene proyectoId)", 400);
+      if (!projId)
+        throw new ApiError("threadId inválido (no contiene proyectoId)", 400);
       return api.sendThreadMessage(projId, id, sender, text);
     }
     return api.sendChatMessage(id, sender, text);
@@ -206,7 +237,9 @@ export const api = {
 
   /** Auditoría */
   getAudit: async (proyectoId: string) => {
-    const res = await http.get<any>(`/api/proyectos/${encodeURIComponent(proyectoId)}/audit`);
+    const res = await http.get<any>(
+      `/api/proyectos/${encodeURIComponent(proyectoId)}/audit`,
+    );
     const page = normalizeAuditPage(res);
     return page.items;
   },
@@ -236,10 +269,11 @@ export const authApi = {
     http.post<{ ok: true }>("/api/auth/register", payload),
 
   login: (email: string, password: string) =>
-    http.post<{ email: string; name?: string | null; avatarUrl?: string | null }>(
-      "/api/auth/login",
-      { email, password }
-    ),
+    http.post<{
+      email: string;
+      name?: string | null;
+      avatarUrl?: string | null;
+    }>("/api/auth/login", { email, password }),
 
   me: async () => {
     try {
@@ -290,10 +324,12 @@ function pickDisplayNameLike(item: AuditItem): string | null {
   const after = (p?.after ?? undefined) as Record<string, any> | undefined;
   const diff = (p?.diff ?? undefined) as Record<string, any> | undefined;
 
-  const fromAfter = (after && (after.nombre || after.titulo || after.entityName)) || null;
+  const fromAfter =
+    (after && (after.nombre || after.titulo || after.entityName)) || null;
   if (fromAfter) return String(fromAfter);
 
-  const fromBefore = (before && (before.nombre || before.titulo || before.entityName)) || null;
+  const fromBefore =
+    (before && (before.nombre || before.titulo || before.entityName)) || null;
   if (fromBefore) return String(fromBefore);
 
   const fromDiff =
@@ -329,7 +365,11 @@ function normalizeAuditItem(raw: any): AuditItem {
 }
 
 function normalizeAuditPage(res: any): AuditPage {
-  const items = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : [];
+  const items = Array.isArray(res?.items)
+    ? res.items
+    : Array.isArray(res)
+      ? res
+      : [];
   return {
     items: items.map(normalizeAuditItem),
     nextCursor: res?.nextCursor ?? null,
@@ -337,10 +377,13 @@ function normalizeAuditPage(res: any): AuditPage {
 }
 
 export const audit = {
-  list: async (proyectoId: string, params?: { limit?: number; cursor?: string }) => {
+  list: async (
+    proyectoId: string,
+    params?: { limit?: number; cursor?: string },
+  ) => {
     const res = await http.get<any>(
       `/api/proyectos/${encodeURIComponent(proyectoId)}/audit`,
-      params as any
+      params as any,
     );
     return normalizeAuditPage(res);
   },

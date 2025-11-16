@@ -5,7 +5,14 @@ type AuditParams = {
   proyectoId: string;
   entity: "proyecto" | "tarea" | "chat" | string;
   entityId?: string | null;
-  action: "create" | "update" | "delete" | "move" | "add-collaborator" | "remove-collaborator" | string;
+  action:
+    | "create"
+    | "update"
+    | "delete"
+    | "move"
+    | "add-collaborator"
+    | "remove-collaborator"
+    | string;
   actorEmail: string;
   /**
    * Nombre legible de la entidad (p.ej., título de tarea o nombre de proyecto).

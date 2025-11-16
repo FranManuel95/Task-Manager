@@ -15,7 +15,8 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
       for (const [id, proyecto] of Object.entries(todos[owner])) {
         const usuarios = (proyecto.usuarios ?? []).map((u) => u.toLowerCase());
         const creator = (proyecto.creadoPor ?? "").toLowerCase();
-        const pertenece = usuarios.includes(emailLower) || creator === emailLower;
+        const pertenece =
+          usuarios.includes(emailLower) || creator === emailLower;
         if (pertenece) resultado[id] = proyecto;
       }
     }
@@ -39,13 +40,128 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     return null;
   },
 
+  /** 🔹 NUEVO: hidratar proyectos desde el backend (mezcla no destructiva) */
+  hydrateProyectosFromServer: (
+    email: string,
+    items: Proyecto[] | Record<string, Proyecto>,
+  ) => {
+    const emailLower = (email ?? "").trim().toLowerCase();
+
+    const array: Proyecto[] = Array.isArray(items)
+      ? items
+      : Object.values(items || {});
+
+    const grouped: Record<string, Record<string, Proyecto>> = {};
+
+    for (const p of array) {
+      const owner = (p.creadoPor ?? emailLower).trim().toLowerCase();
+      const id = p.id;
+
+      const normalized: Proyecto = {
+        ...p,
+        creadoPor: owner,
+        usuarios: Array.from(new Set([...(p.usuarios ?? []), owner])).map((u) =>
+          String(u).toLowerCase(),
+        ),
+        color: p.color || "#3B82F6",
+        deadline: p.deadline ?? null,
+        tareas: p.tareas ?? {
+          "por-hacer": [],
+          "en-progreso": [],
+          completado: [],
+        },
+      };
+
+      if (!grouped[owner]) grouped[owner] = {};
+      grouped[owner][id] = normalized;
+    }
+
+    set((state: TareasStore) => ({
+      proyectos: {
+        ...state.proyectos,
+        ...grouped,
+      },
+    }));
+  },
+
+  /** 🔹 NUEVO: pedir al backend y llamar a hydrate */
+  fetchProyectosAndHydrate: async () => {
+    const emailLower = (get().usuarioActual ?? "").trim().toLowerCase();
+    if (!emailLower) return;
+
+    try {
+      const page = await api.listProyectos(); // { items, total, ... }
+      const items = Array.isArray((page as any)?.items)
+        ? (page as any).items
+        : [];
+
+      // ⚠️ Cast para evitar el error de tipo hasta que actualices TareasStore
+      const hydrate = (get() as any).hydrateProyectosFromServer as
+        | ((
+            email: string,
+            items: Proyecto[] | Record<string, Proyecto>,
+          ) => void)
+        | undefined;
+
+      hydrate?.(emailLower, items);
+    } catch (e) {
+      console.warn("fetchProyectosAndHydrate falló:", e);
+    }
+  },
+
+  // ⬇️ añade cerca de las otras acciones nuevas
+  hydrateProyectoFromServer: (proj: any) => {
+    const owner = String(proj.creadoPor ?? "")
+      .trim()
+      .toLowerCase();
+    if (!owner) return;
+
+    const normalized = {
+      ...proj,
+      creadoPor: owner,
+      usuarios: Array.from(new Set([...(proj.usuarios ?? []), owner])).map(
+        (u: string) => String(u).toLowerCase(),
+      ),
+      color: proj.color || "#3B82F6",
+      deadline: proj.deadline ?? null,
+      tareas: proj.tareas ?? {
+        "por-hacer": [],
+        "en-progreso": [],
+        completado: [],
+      },
+    };
+
+    // mezcla no destructiva en el bucket por owner
+    return (set as any)((state: any) => ({
+      proyectos: {
+        ...state.proyectos,
+        [owner]: {
+          ...(state.proyectos?.[owner] || {}),
+          [normalized.id]: normalized,
+        },
+      },
+    }));
+  },
+
+  fetchProyectoAndHydrate: async (proyectoId: string) => {
+    try {
+      const proj = await api.getProyecto(proyectoId);
+      const hydrate = (get() as any).hydrateProyectoFromServer as (
+        p: any,
+      ) => void;
+      hydrate?.(proj);
+    } catch (e) {
+      console.warn("fetchProyectoAndHydrate falló:", e);
+    }
+  },
+
   // Crear (optimista + normalización de respuesta)
   agregarProyecto: (
     email: string,
     nombre: string,
     descripcion?: string,
     color?: string,
-    deadline?: string | null
+    deadline?: string | null,
   ): void => {
     const emailLower = (email ?? "").trim().toLowerCase();
     const tempId = `temp-${Date.now()}`;
@@ -61,12 +177,15 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
       tareas: {
         "por-hacer": [],
         "en-progreso": [],
-        "completado": [],
+        completado: [],
       },
     };
 
     const proyectosActuales = get().proyectos[emailLower] || {};
-    const nuevosProyectosUsuario = { ...proyectosActuales, [tempId]: nuevoProyecto };
+    const nuevosProyectosUsuario = {
+      ...proyectosActuales,
+      [tempId]: nuevoProyecto,
+    };
 
     // Optimista
     set({
@@ -91,27 +210,29 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
           const next = { ...state.proyectos };
 
           // tareas que pudiste crear en local sobre el temp
-          const tareasFromTemp =
-            next[emailLower]?.[tempId]?.tareas ?? {
-              "por-hacer": [],
-              "en-progreso": [],
-              "completado": [],
-            };
+          const tareasFromTemp = next[emailLower]?.[tempId]?.tareas ?? {
+            "por-hacer": [],
+            "en-progreso": [],
+            completado: [],
+          };
 
-          // normalizar respuesta del backend para que NO te saque del filtro
+          // normalizar respuesta del backend
           const normalized: Proyecto = {
             ...created,
             creadoPor: (created.creadoPor ?? emailLower).trim().toLowerCase(),
             usuarios: Array.from(
-              new Set([...(created.usuarios ?? []), emailLower].map((u) => u.toLowerCase()))
+              new Set(
+                [...(created.usuarios ?? []), emailLower].map((u) =>
+                  u.toLowerCase(),
+                ),
+              ),
             ),
-            // mantener tareas locales si las hubiera
             tareas: tareasFromTemp,
           };
 
-          const ownerKey = normalized.creadoPor; // bucket por creador
+          const ownerKey = normalized.creadoPor;
 
-          // limpiar el temp de cualquier bucket donde esté
+          // limpiar el temp donde esté
           if (next[emailLower]?.[tempId]) {
             const { [tempId]: _drop1, ...rest } = next[emailLower];
             next[emailLower] = rest;
@@ -130,13 +251,11 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
 
           return {
             proyectos: next,
-            // si tu store tiene idRemap, mantenlo; si no, puedes quitar esta línea
             idRemap: { ...(state as any).idRemap, [tempId]: normalized.id },
           } as Partial<TareasStore>;
         });
       } catch (err) {
         console.warn("createProyecto (backend) falló, manteniendo local:", err);
-        // Nota: dejamos el temp visible si falla la API.
       }
     })();
   },
@@ -147,7 +266,7 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     nombre: string,
     descripcion: string,
     color: string,
-    deadline: string | null
+    deadline: string | null,
   ): void => {
     const emailLower = (get().usuarioActual ?? "").trim().toLowerCase();
     const loc = locateProyecto(get(), id);
@@ -156,12 +275,13 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     const { ownerEmail, proyecto } = loc;
     if (!canEditProyecto(emailLower, proyecto)) return;
 
-    // Validación de deadlines (no permitir tareas con fecha > nueva fecha de proyecto)
     if (deadline) {
       for (const col of Object.values(proyecto.tareas)) {
         for (const t of col) {
           if (t.deadline && new Date(t.deadline) > new Date(deadline)) {
-            alert("El proyecto tiene tareas con fecha posterior a la nueva fecha límite.");
+            alert(
+              "El proyecto tiene tareas con fecha posterior a la nueva fecha límite.",
+            );
             return;
           }
         }
@@ -182,9 +302,17 @@ export const createProyectoActions = (set: any, get: () => TareasStore) => ({
     // Backend
     void (async () => {
       try {
-        await api.updateProyecto(id, { nombre, descripcion, color, deadline: deadline ?? null });
+        await api.updateProyecto(id, {
+          nombre,
+          descripcion,
+          color,
+          deadline: deadline ?? null,
+        });
       } catch (err) {
-        console.warn("updateProyecto (backend) falló, se mantiene estado local:", err);
+        console.warn(
+          "updateProyecto (backend) falló, se mantiene estado local:",
+          err,
+        );
       }
     })();
   },

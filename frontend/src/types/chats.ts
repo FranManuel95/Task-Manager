@@ -2,11 +2,11 @@
 import type { ISODateString } from "./common";
 
 export interface ChatMessage {
-  id: string;          // uuid
+  id: string; // uuid
   proyectoId: string;
-  sender: string;      // email
+  sender: string; // email
   text: string;
-  ts: ISODateString;   // ISO string
+  ts: ISODateString; // ISO string
   edited?: boolean;
 }
 

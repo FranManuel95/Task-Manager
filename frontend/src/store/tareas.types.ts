@@ -23,14 +23,14 @@ export type TareasStore = {
     nombre: string,
     descripcion?: string,
     color?: string,
-    deadline?: string | null
+    deadline?: string | null,
   ) => void;
   editarProyecto: (
     id: string,
     nombre: string,
     descripcion: string,
     color: string,
-    deadline: string | null
+    deadline: string | null,
   ) => void;
   eliminarProyecto: (id: string) => void;
 
@@ -49,6 +49,6 @@ export type TareasStore = {
     descripcion: string,
     prioridad: Prioridad,
     deadline: string | null,
-    etiquetas: string[]
+    etiquetas: string[],
   ) => void;
 };

@@ -21,7 +21,7 @@ export default function ChatDock({ proyectoId }: Props) {
   const proyecto = useTareasStore((s) => s.getProyectoPorId(email, proyectoId));
   const miembros: string[] = useMemo(
     () => (proyecto?.usuarios ?? []).filter(Boolean),
-    [proyecto?.usuarios]
+    [proyecto?.usuarios],
   );
 
   // Para badge de no leídos en el chat general
@@ -127,7 +127,9 @@ export default function ChatDock({ proyectoId }: Props) {
                   />
                   <div className="mt-2 flex flex-wrap gap-1.5 max-h-20 overflow-y-auto pr-1">
                     {filteredMembers.length === 0 && (
-                      <div className="text-xs text-gray-500">Sin resultados</div>
+                      <div className="text-xs text-gray-500">
+                        Sin resultados
+                      </div>
                     )}
                     {filteredMembers.map((m) => {
                       const selected = activeDm === m;

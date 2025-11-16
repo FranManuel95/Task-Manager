@@ -115,17 +115,17 @@ export default function NewTaskModal({
             <label className="text-sm">
               <span className="mb-1 block text-xs opacity-70">Columna</span>
               <select
-  value={estado}
-  onChange={(e) => setEstado(e.target.value as Estado)}
-  className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400
+                value={estado}
+                onChange={(e) => setEstado(e.target.value as Estado)}
+                className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400
              dark:[color-scheme:dark]"
->
-  {ESTADOS_UI.map((e) => (
-    <option key={e.id} value={e.id}>
-      {e.titulo}
-    </option>
-  ))}
-</select>
+              >
+                {ESTADOS_UI.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.titulo}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="text-sm">
@@ -135,7 +135,12 @@ export default function NewTaskModal({
                 onChange={(e) => setPrioridad(e.target.value as Prioridad)}
                 className="w-full rounded-lg border border-[rgb(var(--color-border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 dark:text-white dark:bg-neutral-900"
               >
-                <option className=" dark:text-white dark:bg-neutral-900" value="alta">Alta</option>
+                <option
+                  className=" dark:text-white dark:bg-neutral-900"
+                  value="alta"
+                >
+                  Alta
+                </option>
                 <option value="media">Media</option>
                 <option value="baja">Baja</option>
               </select>
@@ -172,7 +177,9 @@ export default function NewTaskModal({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="text-sm">
-              <span className="mb-1 block text-xs opacity-70">Fecha límite</span>
+              <span className="mb-1 block text-xs opacity-70">
+                Fecha límite
+              </span>
               <input
                 type="date"
                 value={deadline}
@@ -191,7 +198,9 @@ export default function NewTaskModal({
                 ].join(" ")}
               />
               {deadlineError && (
-                <p className="mt-1 text-[11px] text-rose-500">{deadlineError}</p>
+                <p className="mt-1 text-[11px] text-rose-500">
+                  {deadlineError}
+                </p>
               )}
             </label>
 
@@ -221,7 +230,10 @@ export default function NewTaskModal({
               {etiquetas.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {etiquetas.map((t, i) => (
-                    <span key={i} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-700 dark:bg-sky-950/30 dark:text-sky-300">
+                    <span
+                      key={i}
+                      className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] text-sky-700 dark:bg-sky-950/30 dark:text-sky-300"
+                    >
                       #{t}
                     </span>
                   ))}
