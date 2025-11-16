@@ -1,7 +1,7 @@
 import { useEffect, useState, ChangeEvent, KeyboardEvent } from "react";
 import { motion } from "motion/react";
 import { Estado, Prioridad } from "../../types";
-import { estados as ESTADOS_UI } from "./constantes";
+import { estados as ESTADOS_UI } from "../project/constantes";
 
 // ...imports iguales...
 export type TaskModalValues = {

@@ -2,9 +2,9 @@ import { motion } from "motion/react";
 import { useDraggable } from "@dnd-kit/core";
 import { parseISO, isBefore, differenceInHours } from "date-fns";
 import { useState } from "react";
-import ModalConfirmacion from "../modals/ModalConfirmacion"; // nuevo modal reutilizable
+import ModalConfirmacion from "../modals/ModalConfirmacionEliminar"; // nuevo modal reutilizable
 import { Estado, Tarea as TareaModel } from "../../types";
-import TaskModal from "../project/TaskModal";
+import TaskModal from "../modals/ModalEditarCrear";
 
 type Props = {
   proyectoId: string;

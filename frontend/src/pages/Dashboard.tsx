@@ -3,8 +3,8 @@ import { useState, useEffect, ChangeEvent, FormEvent, useMemo } from "react";
 import { useTareasStore } from "../store/tareasStore";
 import { parseISO, differenceInDays, isBefore } from "date-fns";
 import { useAuthStore } from "../store/authStore";
-import ModalConfirmacion from "../components/modals/ModalConfirmacion";
-import TaskModal from "../components/project/TaskModal";
+import ModalConfirmacion from "../components/modals/ModalConfirmacionEliminar";
+import TaskModal from "../components/modals/ModalEditarCrear";
 import TopBar from "../components/layout/TopBar";
 
 type ProyectoType = {

@@ -1,4 +1,85 @@
-node_modules
-npm-debug.log
+# ─────────────────────────────
+# Node
+# ─────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─────────────────────────────
+# Build Outputs
+# ─────────────────────────────
+# Frontend (Vite)
+frontend/dist/
+
+# Backend builds (por si compilas TS en el futuro)
+backend/dist/
+backend/build/
+
+# ─────────────────────────────
+# Environment Variables
+# ─────────────────────────────
+.env
+.env.*        # evita subir claves sensibles
+
+# ─────────────────────────────
+# Logs
+# ─────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ─────────────────────────────
+# Prisma
+# ─────────────────────────────
+# Archivos generados por Prisma Client
+/backend/node_modules/.prisma/
+backend/node_modules/.prisma/
+
+# Si Prisma genera tipos localmente
+backend/src/generated/
+backend/src/generated/prisma/
+
+# Bases de datos locales (si usases sqlite en algún momento)
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# ─────────────────────────────
+# Docker
+# ─────────────────────────────
+# Volumen donde Docker guarda tu Postgres
+db_data/
+
+# Artefactos temporales
+*.pid
+docker-data/
+
+# ─────────────────────────────
+# Sistema operativo
+# ─────────────────────────────
 .DS_Store
-/src/generated/prisma
+Thumbs.db
+
+# ─────────────────────────────
+# Editor
+# ─────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─────────────────────────────
+# Test / Coverage
+# ─────────────────────────────
+coverage/
+coverage-final.json
+
+# ─────────────────────────────
+# Cache
+# ─────────────────────────────
+.cache/
+.eslintcache
+.parcel-cache/
+webpack-cache/
+turbo/

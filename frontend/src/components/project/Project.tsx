@@ -21,7 +21,7 @@ import ActivityPanel from "./ActivityPanel";
 import ChatDock from "./ChatDock";
 import TopBar from "../layout/TopBar";
 
-import TaskModal, { TaskModalValues } from "./TaskModal";
+import TaskModal, { TaskModalValues } from "../modals/ModalEditarCrear";
 
 /* ===================== Overlay de Actividad ===================== */
 function ActivityOverlay({
